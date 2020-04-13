@@ -35,7 +35,6 @@ val `distr-master-worker` = project
       "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
       "org.sisioh"        %% "akka-cluster-custom-downing" % "0.1.0",
       "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion, //to shade old akka-cluster-sharding
-      "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
 
       "com.typesafe.akka" %% "akka-http" % "10.1.11",
       "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.11",

@@ -2,26 +2,22 @@ package com.sim
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
-import com.sim.Master.{MProtocol, Status, TaskScheduled}
+import com.sim.Master.{MProtocol, TaskAck}
 
 object Worker {
 
-  sealed trait WorkDistribution
-  case class GetWorkerInfo(replyTo: ActorRef[MProtocol])              extends WorkDistribution
-  case class ScheduleTask(seqNum: Long, replyTo: ActorRef[MProtocol]) extends WorkDistribution
+  sealed trait WProtocol
+  final case class ScheduleTask(seqNum: Long, replyTo: ActorRef[MProtocol]) extends WProtocol
 
-  def apply(workerAddress: String): Behavior[WorkDistribution] =
+  def apply(addr: String): Behavior[WProtocol] =
     Behaviors.setup { ctx =>
       ctx.system.receptionist ! akka.actor.typed.receptionist.Receptionist
         .Register(Master.MasterWorker, ctx.self)
 
       Behaviors.receiveMessage {
-        case GetWorkerInfo(replyTo) =>
-          replyTo.tell(Status(workerAddress))
-          Behaviors.same
         case ScheduleTask(seqNum, replyTo) =>
-          ctx.log.info("ScheduleTask {}", seqNum)
-          replyTo.tell(TaskScheduled(seqNum))
+          ctx.log.info("Worker {} gets task {}", addr, seqNum)
+          replyTo.tell(TaskAck(seqNum))
           Behaviors.same
       }
     }

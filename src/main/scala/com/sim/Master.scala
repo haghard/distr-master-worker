@@ -4,24 +4,20 @@ import akka.actor.{ActorPath, Address}
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
-import com.sim.Worker.{ScheduleTask, WorkDistribution}
+import com.sim.Worker.{ScheduleTask, WProtocol}
+import com.sim.http.HttpApi
 
 import scala.concurrent.duration._
 
 object Master {
 
   sealed trait MProtocol
-  case object Tick                       extends MProtocol
-  case class TaskScheduled(seqNum: Long) extends MProtocol
+  case object Tick                                                      extends MProtocol
+  final case class TaskAck(seqNum: Long)                                extends MProtocol
+  final case class GetWorkers(replyTo: ActorRef[HttpApi.Reply])         extends MProtocol
+  final case class MembershipChanged(workers: Set[ActorRef[WProtocol]]) extends MProtocol
 
-  sealed trait Request                                                   extends MProtocol
-  case class GetWorkers(replyTo: ActorRef[Reply])                        extends Request
-  case class MembershipChanged(workers: Set[ActorRef[WorkDistribution]]) extends Request
-
-  sealed trait Reply              extends MProtocol
-  case class Status(desc: String) extends Reply
-
-  val MasterWorker = ServiceKey[WorkDistribution]("master-worker")
+  val MasterWorker = ServiceKey[WProtocol]("master-worker")
 
   def apply(master: Address): Behavior[MProtocol] =
     Behaviors.setup { ctx =>
@@ -34,12 +30,12 @@ object Master {
             MembershipChanged(workers)
         }
       )
-      active(master, Set.empty[ActorRef[WorkDistribution]], ctx)
+      active(master, Set.empty[ActorRef[WProtocol]], ctx)
     }
 
   def active(
     master: Address,
-    workers: Set[ActorRef[WorkDistribution]],
+    workers: Set[ActorRef[WProtocol]],
     ctx: ActorContext[MProtocol],
     counter: Long = 0L
   ): Behavior[MProtocol] =
@@ -58,17 +54,14 @@ object Master {
             s"akka://${Runner.SystemName}@${master.host.get}:${master.port.get}/${localWorker.path.elements.mkString("/")}"
           )
           val paths = remote.map(_.path) + localWorkerPath
-          replyTo.tell(Status(s"Master runs on: $master\nWorkers available [${paths.mkString(",")}]"))
+          replyTo.tell(HttpApi.Status(s"Master runs on: $master\nWorkers available [${paths.mkString(",")}]"))
           Behaviors.same
         case Tick =>
           workers.foreach(_.tell(ScheduleTask(counter, ctx.self)))
           active(master, workers, ctx, counter + 1L)
-        case TaskScheduled(seqNum) =>
-          ctx.log.info("TaskScheduled: {}", seqNum)
+        case TaskAck(seqNum) =>
+          ctx.log.info("TaskAck: {}", seqNum)
           Behaviors.same
-        case other =>
-          ctx.log.warn("Unexpected msg {}", other)
-          Behaviors.stopped
       }
     }
 }
