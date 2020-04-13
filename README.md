@@ -24,8 +24,15 @@ http 127.0.0.1:2652/cluster/members
 Find the PID for the unreachable node:
 > lsof -i :2551 | grep LISTEN | awk '{print $2}'
 
-Terminate the unreachable node:
+Hard kill
 > kill -9 <pid>
+
+Suspend
+> kill -stop <pid>
+
+Resume
+> kill -cont <pid>
+
 
 curl -w '\n' -X PUT -H 'Content-Type: multipart/form-data' -F operation=down http://localhost:2651/cluster/members/sim@127.0.0.1:2552
 
