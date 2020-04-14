@@ -73,7 +73,7 @@ object Runner extends App {
 
   def startup(port: Int): Unit = {
     val cfg    = ConfigFactory.parseString(s"akka.remote.artery.canonical.port=$port").withFallback(ConfigFactory.load())
-    val g      = guardian("127.0.0.1", port)
+    val g      = guardian("0.0.0.0", port)
     val system = akka.actor.typed.ActorSystem[Nothing](g, SystemName, cfg)
 
     val memorySize = ManagementFactory.getOperatingSystemMXBean
