@@ -23,7 +23,7 @@ import scala.io.StdIn
   * runMain com.sim.Runner 2553
   */
 object Runner extends App {
-  val SystemName = "sim"
+  val SystemName = "dsim"
 
   if (args.isEmpty) throw new Exception("Port is missing") else startup(args(0).toInt)
 
