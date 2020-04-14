@@ -19,7 +19,6 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 import spray.json._
 import spray.json.DefaultJsonProtocol._
-//import org.slf4j.Logger
 
 object HttpApi extends PathDirectives with Directives {
   implicit val to = akka.util.Timeout(2.seconds) //
@@ -31,13 +30,12 @@ object HttpApi extends PathDirectives with Directives {
   final case class ServerError(error: String)
   implicit val errorFormat1 = jsonFormat1(ServerError)
 
-  def api(
+  def apply(
     master: ActorRef[GetWorkers]
   )(implicit sys: akka.actor.typed.ActorSystem[Nothing]) =
     extractLog { implicit log =>
       path("status") {
         get {
-          //implicit val log = sys.log
           val f = master
             .ask { replyTo: ActorRef[Reply] => GetWorkers(replyTo) }
             .mapTo[Status]

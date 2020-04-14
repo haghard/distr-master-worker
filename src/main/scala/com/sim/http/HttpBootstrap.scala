@@ -20,12 +20,12 @@ object HttpBootstrap {
   val terminationDeadline = 4.seconds
 }
 
-class HttpBootstrap(routes: Route, host: String, httpPort: Int)(
-  implicit system: akka.actor.ActorSystem,
-  cShutdown: CoordinatedShutdown
+case class HttpBootstrap(routes: Route, host: String, httpPort: Int)(
+  implicit system: akka.actor.ActorSystem
 ) {
 
   implicit val ex = system.dispatcher
+  val cShutdown   = CoordinatedShutdown(system)
 
   ClusterHttpManagementRouteProvider(system)
   val managementRoutes = ClusterHttpManagementRoutes(Cluster(system))
@@ -53,7 +53,7 @@ class HttpBootstrap(routes: Route, host: String, httpPort: Int)(
           system.log.info("http-api.terminate")
           //It doesn't accept new connection but it drains the existing connections
           //Until the terminationDeadline all the req that have been accepted will be completed
-          //and only that the shutdown will continue
+          //and only than the shutdown will continue
           binding.terminate(HttpBootstrap.terminationDeadline).map(_ => Done)
         }
     }

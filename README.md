@@ -53,3 +53,8 @@ Right after singleton migration happened
 Association to [akka://sim@127.0.0.1:2551] with UID [840168982636099904] is irrecoverably failed. 
 UID is now quarantined and all messages to this UID will be delivered to dead letters. 
 Remote ActorSystem must be restarted to recover from this situation. Reason: Cluster member removed, previous status [Down]
+
+
+
+https://doc.akka.io/docs/akka/current/coordinated-shutdown.html
+https://doc.akka.io/docs/akka/current/remoting-artery.html#quarantine

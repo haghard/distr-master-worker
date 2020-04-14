@@ -4,7 +4,6 @@ package sim
 import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
 
-import akka.actor.CoordinatedShutdown
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{Behavior, PostStop, Terminated}
 import akka.cluster.typed.{ClusterSingleton, SelfUp, SingletonActor, Unsubscribe}
@@ -52,8 +51,7 @@ object Runner extends App {
             val worker = ctx.spawn(Worker(addr), "worker")
             ctx.watch(worker)
 
-            val cShutdown = CoordinatedShutdown(sys)
-            new HttpBootstrap(HttpApi.api(master.narrow[GetWorkers]), hostName, port + 100)(sys.toClassic, cShutdown)
+            HttpBootstrap(HttpApi(master.narrow[GetWorkers]), hostName, port + 100)(sys.toClassic)
 
             Behaviors.receiveSignal[SelfUp] {
               case (_, Terminated(`worker`)) =>
@@ -61,7 +59,7 @@ object Runner extends App {
                 ctx.system.terminate()
                 Behaviors.same //WARNING: Behaviors.stopped here leads to unreachable node
               case (_, PostStop) =>
-                ctx.log.warn(s"Guardian got PostStop signal")
+                ctx.log.warn("Guardian has been stopped")
                 Behaviors.same
               case (_, other) =>
                 ctx.log.warn(s"Guardian got unexpected $other signal. Ignore it")
@@ -99,8 +97,6 @@ object Runner extends App {
 
     val _ = StdIn.readLine()
     system.log.warn("Shutting down ...")
-
-    //CoordinatedShutdown is by default running by jvm shutdown hook, and CoordinatedShutdown ends by terminating the ActorSystem.
     system.terminate() //
     val _ = Await.result(
       system.whenTerminated,
