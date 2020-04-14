@@ -1,7 +1,5 @@
 package com
-package sim
-
-import java.util.concurrent.ThreadLocalRandom
+package dsim
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
@@ -20,7 +18,7 @@ object Worker {
       Behaviors.receiveMessage {
         case ScheduleTask(seqNum, replyTo) =>
           ctx.log.info("Worker {} gets task {}", addr, seqNum)
-          //if (ThreadLocalRandom.current().nextDouble < .4 && !addr.contains("2551")) throw new Exception("Boom !!!")
+          //if (java.util.concurrent.ThreadLocalRandom.current().nextDouble < .4 && !addr.contains("2551")) throw new Exception("Boom !!!")
 
           replyTo.tell(TaskAck(seqNum))
           Behaviors.same

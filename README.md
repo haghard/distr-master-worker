@@ -56,5 +56,17 @@ Remote ActorSystem must be restarted to recover from this situation. Reason: Clu
 
 
 
+This 
+16:33:14.285UTC |INFO | [dsim-akka.remote.default-remote-dispatcher-14, dsim, Association(akka://dsim)] akka.remote.artery.Association - Association to [akka://dsim@127.0.0.1:2552] having UID [-4559786446003828560] has been stopped. All messages to this UID will be delivered to dead letters. Reason: ActorSystem terminated
+indicates wrong shutdown 
+and as a result Node [akka://dsim@127.0.0.1:2551] - Marking node as UNREACHABLE [Member(address = akka://dsim@127.0.0.1:2552
+
+This indicates kill -9 
+17:05:16.824UTC |WARN | [dsim-akka.actor.internal-dispatcher-4, dsim, Association(akka://dsim)] akka.remote.artery.Association - Association to [akka://dsim@127.0.0.1:2551] with UID [-8127006961833515351] is irrecoverably failed. UID is now quarantined and all messages to this UID will be delivered to dead letters. Remote ActorSystem must be restarted to recover from this situation. Reason: Cluster member removed, previous status [Down]
+or split brain action 
+
+
+
+
 https://doc.akka.io/docs/akka/current/coordinated-shutdown.html
 https://doc.akka.io/docs/akka/current/remoting-artery.html#quarantine

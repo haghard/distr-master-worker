@@ -1,9 +1,9 @@
 package com
 
-import com.sim.Worker.WProtocol
+import com.dsim.Worker.WProtocol
 import akka.actor.typed.receptionist.ServiceKey
 
-package object sim {
+package object dsim {
 
   val MasterWorkerKey = ServiceKey[WProtocol]("master-worker")
 

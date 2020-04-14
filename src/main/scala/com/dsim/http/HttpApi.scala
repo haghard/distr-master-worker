@@ -1,5 +1,5 @@
 package com
-package sim.http
+package dsim.http
 
 import akka.actor.typed.ActorRef
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
@@ -10,7 +10,7 @@ import akka.event.LoggingAdapter
 import akka.http.scaladsl.model.ContentTypes.`application/json`
 import akka.http.scaladsl.model.HttpEntity.Strict
 import akka.util.ByteString
-import com.sim.Master.GetWorkers
+import com.dsim.Master.GetWorkers
 import spray.json.DefaultJsonProtocol.jsonFormat1
 
 import scala.concurrent.{Future, TimeoutException}

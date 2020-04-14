@@ -1,5 +1,5 @@
 package com
-package sim
+package dsim
 
 import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
@@ -7,19 +7,19 @@ import java.util.concurrent.TimeUnit
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{Behavior, PostStop, Terminated}
 import akka.cluster.typed.{ClusterSingleton, SelfUp, SingletonActor, Unsubscribe}
-import com.sim.http.{HttpApi, HttpBootstrap}
+import com.dsim.http.{HttpApi, HttpServer}
 import com.typesafe.config.ConfigFactory
 import akka.actor.typed.scaladsl.adapter._
-import com.sim.Master.GetWorkers
+import com.dsim.Master.GetWorkers
 
 import scala.concurrent.duration._
 import scala.concurrent.Await
 import scala.io.StdIn
 
 /**
-  * runMain com.sim.Runner 2551
-  * runMain com.sim.Runner 2552
-  * runMain com.sim.Runner 2553
+  * runMain com.dsim.Runner 2551
+  * runMain com.dsim.Runner 2552
+  * runMain com.dsim.Runner 2553
   */
 object Runner extends App {
   val SystemName = "dsim"
@@ -51,13 +51,14 @@ object Runner extends App {
             val worker = ctx.spawn(Worker(addr), "worker")
             ctx.watch(worker)
 
-            HttpBootstrap(HttpApi(master.narrow[GetWorkers]), hostName, port + 100)(sys.toClassic)
+            HttpServer(HttpApi(master.narrow[GetWorkers]), hostName, port + 100)(sys.toClassic)
 
             Behaviors.receiveSignal[SelfUp] {
               case (_, Terminated(`worker`)) =>
                 ctx.log.error(s"Unrecoverable WORKER error. $worker has been terminated. Shutting down...")
                 ctx.system.terminate()
                 Behaviors.same //WARNING: Behaviors.stopped here leads to unreachable node
+              //Behaviors.stopped
               case (_, PostStop) =>
                 ctx.log.warn("Guardian has been stopped")
                 Behaviors.same
