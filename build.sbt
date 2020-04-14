@@ -52,7 +52,7 @@ val `distr-master-worker` = project
     // disable parallel tests
     parallelExecution in Test := false,
     
-    javaOptions ++= Seq("-Xmx1024m", "-Xms128m", "-XX:MaxMetaspaceSize=800m", "-XX:+UseG1GC", "-XX:+HeapDumpOnOutOfMemoryError")
+    javaOptions ++= Seq("-Xmx512m", "-Xms256m", "-XX:+UseG1GC", "-XX:+HeapDumpOnOutOfMemoryError")
 
   ) configs MultiJvm
 

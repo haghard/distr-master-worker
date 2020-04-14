@@ -1,4 +1,5 @@
-package com.sim.http
+package com
+package sim.http
 
 import akka.Done
 import akka.http.scaladsl.Http
@@ -13,13 +14,13 @@ import akka.management.cluster.ClusterHttpManagementRouteProvider
 import akka.management.cluster.scaladsl.ClusterHttpManagementRoutes
 import akka.http.scaladsl.server.RouteConcatenation._
 
-object Bootstrap {
+object HttpBootstrap {
   final private case object BindFailure extends Reason
 
   val terminationDeadline = 4.seconds
 }
 
-class Bootstrap(routes: Route, host: String, httpPort: Int)(
+class HttpBootstrap(routes: Route, host: String, httpPort: Int)(
   implicit system: akka.actor.ActorSystem,
   cShutdown: CoordinatedShutdown
 ) {
@@ -38,13 +39,13 @@ class Bootstrap(routes: Route, host: String, httpPort: Int)(
     .onComplete {
       case Failure(ex) =>
         system.log.error(s"Shutting down because can't bind to $host:$httpPort", ex)
-        cShutdown.run(Bootstrap.BindFailure)
+        cShutdown.run(HttpBootstrap.BindFailure)
       case Success(binding) =>
         system.log.info(s"Listening for HTTP connections on ${binding.localAddress}")
         cShutdown.addTask(PhaseServiceUnbind, "api.unbind") { () =>
           system.log.info("api.unbind")
           // No new connections are accepted. Existing connections are still allowed to perform request/response cycles
-          binding.terminate(Bootstrap.terminationDeadline).map(_ => Done)
+          binding.terminate(HttpBootstrap.terminationDeadline).map(_ => Done)
         }
 
         //graceful termination request being handled on this connection
@@ -53,7 +54,7 @@ class Bootstrap(routes: Route, host: String, httpPort: Int)(
           //It doesn't accept new connection but it drains the existing connections
           //Until the terminationDeadline all the req that have been accepted will be completed
           //and only that the shutdown will continue
-          binding.terminate(Bootstrap.terminationDeadline).map(_ => Done)
+          binding.terminate(HttpBootstrap.terminationDeadline).map(_ => Done)
         }
     }
 }
