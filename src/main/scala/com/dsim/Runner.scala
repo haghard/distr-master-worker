@@ -44,11 +44,11 @@ object Runner extends App {
               SingletonActor(Master(cluster.selfMember.uniqueAddress.address), "master")
             )
 
-            val addr = cluster.selfMember.address.host
+            val workerAddr = cluster.selfMember.address.host
               .flatMap(h => cluster.selfMember.address.port.map(p => s"$h:$p"))
               .getOrElse(throw new Exception("Couldn't get self address"))
 
-            val worker = ctx.spawn(Worker(addr), "worker")
+            val worker = ctx.spawn(Worker(workerAddr, master), "worker")
             ctx.watch(worker)
 
             HttpServer(HttpApi(master.narrow[GetWorkers]), hostName, port + 100)(sys.toClassic)
@@ -57,8 +57,7 @@ object Runner extends App {
               case (_, Terminated(`worker`)) =>
                 ctx.log.error(s"Unrecoverable WORKER error. $worker has been terminated. Shutting down...")
                 ctx.system.terminate()
-                Behaviors.same //WARNING: Behaviors.stopped here leads to unreachable node
-              //Behaviors.stopped
+                Behaviors.same //WARNING: Behaviors.stopped here leads to incorrect coordinated-shutdown and unreachable node
               case (_, PostStop) =>
                 ctx.log.warn("Guardian has been stopped")
                 Behaviors.same
