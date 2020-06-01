@@ -6,19 +6,22 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import Worker.{ScheduleTask, WProtocol}
-import http.HttpApi
+import http.Api
 
 import scala.concurrent.duration._
 
 object Master {
 
-  sealed trait MProtocol
-  case object Tick                                                      extends MProtocol
-  final case class TaskAck(seqNum: Long)                                extends MProtocol
-  final case class GetWorkers(replyTo: ActorRef[http.HttpApi.Reply])    extends MProtocol
-  final case class MembershipChanged(workers: Set[ActorRef[WProtocol]]) extends MProtocol
+  sealed trait Protocol
+  case object Tick                       extends Protocol
+  final case class TaskAck(seqNum: Long) extends Protocol
 
-  def apply(master: Address): Behavior[MProtocol] =
+  final case class MembershipChanged(workers: Set[ActorRef[WProtocol]]) extends Protocol
+
+  sealed trait HttpReq                                           extends Protocol
+  final case class GetWorkers(replyTo: ActorRef[http.Api.Reply]) extends HttpReq
+
+  def apply(master: Address): Behavior[Protocol] =
     Behaviors.setup { ctx =>
       ctx.log.warn("Start master on {}", master)
 
@@ -35,9 +38,9 @@ object Master {
   def active(
     master: Address,
     workers: Set[ActorRef[WProtocol]],
-    ctx: ActorContext[MProtocol],
+    ctx: ActorContext[Protocol],
     counter: Long = 0L
-  ): Behavior[MProtocol] =
+  ): Behavior[Protocol] =
     Behaviors.withTimers { timer =>
       timer.startTimerAtFixedRate(Tick, 5.seconds)
 
@@ -53,7 +56,7 @@ object Master {
             s"akka://${Runner.SystemName}@${master.host.get}:${master.port.get}/${localWorker.path.elements.mkString("/")}"
           )
           val paths = remote.map(_.path) + localWorkerPath
-          replyTo.tell(HttpApi.Status(master.toString, paths.map(_.toString).toList))
+          replyTo.tell(Api.Status(master.toString, paths.map(_.toString).toList))
           Behaviors.same
         case Tick =>
           workers.foreach(_.tell(ScheduleTask(counter, ctx.self)))

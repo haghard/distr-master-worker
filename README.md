@@ -45,7 +45,10 @@ Steps to reproduce
 a.r.a.c.InboundActorRefCompression - Inbound message from originUid [-6086534924564321052] is using unknown compression table version. 
 It may have been sent with compression table built for previous incarnation of this system. Versions activeTable: 0, nextTable: 1, incomingTable: 6
 
+
 https://discuss.lightbend.com/t/how-to-avoid-nodes-to-be-quarantined-in-akka-cluster/1932
+https://manuel.bernhardt.io/2017/06/08/akka-anti-patterns-using-remoting/
+https://doc.akka.io/docs/akka/snapshot/remoting.html?language=scala#types-of-remote-interaction
 
 
 Right after singleton migration happened
@@ -70,3 +73,11 @@ https://doc.akka.io/docs/akka/current/remoting-artery.html#quarantine
 
 https://github.com/akka/akka-samples/tree/2.6/akka-sample-distributed-workers-scala
 https://github.com/akka/akka-samples/blob/2.6/akka-sample-distributed-workers-scala/src/main/scala/worker/WorkManager.scala
+
+
+
+
+https://www.lightbend.com/blog/how-to-distribute-application-state-with-akka-cluster-part-4-the-source-code
+https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
+
+

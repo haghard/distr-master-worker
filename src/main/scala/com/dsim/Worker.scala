@@ -1,16 +1,16 @@
 package com
 package dsim
 
-import Master.{MProtocol, TaskAck}
+import Master.{Protocol, TaskAck}
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 
 object Worker {
 
   sealed trait WProtocol
-  final case class ScheduleTask(seqNum: Long, replyTo: ActorRef[MProtocol]) extends WProtocol
+  final case class ScheduleTask(seqNum: Long, replyTo: ActorRef[Protocol]) extends WProtocol
 
-  def apply(addr: String, master: ActorRef[Master.MProtocol]): Behavior[WProtocol] =
+  def apply(addr: String, master: ActorRef[Master.Protocol]): Behavior[WProtocol] =
     Behaviors.setup { ctx =>
       ctx.system.receptionist ! akka.actor.typed.receptionist.Receptionist
         .Register(MasterWorkerKey, ctx.self)
@@ -18,7 +18,7 @@ object Worker {
       idle(addr, master, ctx)
     }
 
-  def idle(workerAddr: String, master: ActorRef[Master.MProtocol], ctx: ActorContext[WProtocol]): Behavior[WProtocol] =
+  def idle(workerAddr: String, master: ActorRef[Master.Protocol], ctx: ActorContext[WProtocol]): Behavior[WProtocol] =
     Behaviors.receiveMessage {
       case ScheduleTask(seqNum, replyTo) =>
         ctx.log.info("Worker {} gets task {}", workerAddr, seqNum)

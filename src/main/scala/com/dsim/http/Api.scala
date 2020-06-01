@@ -1,5 +1,5 @@
-package com
-package dsim.http
+package com.dsim
+package http
 
 import akka.actor.typed.ActorRef
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
@@ -10,7 +10,6 @@ import akka.event.LoggingAdapter
 import akka.http.scaladsl.model.ContentTypes.`application/json`
 import akka.http.scaladsl.model.HttpEntity.Strict
 import akka.util.ByteString
-import com.dsim.Master.GetWorkers
 import spray.json.DefaultJsonProtocol.jsonFormat1
 
 import scala.concurrent.{Future, TimeoutException}
@@ -20,9 +19,7 @@ import scala.util.{Failure, Success}
 import spray.json._
 import spray.json.DefaultJsonProtocol._
 
-object HttpApi extends PathDirectives with Directives {
-  implicit val to = akka.util.Timeout(2.seconds) //
-
+object Api extends PathDirectives with Directives {
   sealed trait Reply
   final case class Status(master: String, workers: List[String]) extends Reply
   implicit val errorFormat0 = jsonFormat2(Status)
@@ -31,25 +28,25 @@ object HttpApi extends PathDirectives with Directives {
   implicit val errorFormat1 = jsonFormat1(ServerError)
 
   def apply(
-    master: ActorRef[GetWorkers]
-  )(implicit sys: akka.actor.typed.ActorSystem[Nothing]) =
+    master: ActorRef[Master.GetWorkers],
+    askTo: FiniteDuration
+  )(implicit sys: akka.actor.typed.ActorSystem[Nothing]) = {
+    implicit val to = akka.util.Timeout(askTo) //
+
     extractLog { implicit log =>
       path("status") {
         get {
-          val f = master
-            .ask { replyTo: ActorRef[Reply] => GetWorkers(replyTo) }
-            .mapTo[Status]
-
-          onRespComplete[Status](f) {
+          onRespComplete(master.ask[Reply](Master.GetWorkers(_))) {
             case reply: Status =>
               complete(StatusCodes.OK -> Strict(`application/json`, ByteString(reply.toJson.compactPrint)))
           }
         }
       }
     }
+  }
 
   private def onRespComplete[T](
-    responseFuture: Future[Any]
+    responseFuture: Future[T]
   )(f: Function[T, Route])(implicit c: ClassTag[T], log: LoggingAdapter): Route =
     onComplete(responseFuture) {
       case Success(t: T) => f(t)
