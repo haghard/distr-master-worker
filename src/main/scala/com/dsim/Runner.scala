@@ -65,6 +65,7 @@ object Runner extends App {
 
             // {"consumer-controller":{"flow-control-window":50,"only-flow-control":false,"resend-interval-max":"30s","resend-interval-min":"2s"},"producer-controller":{"durable-queue":{"request-timeout":"3s","resend-first-interval":"1s","retry-attempts":10}},"work-pulling":{"producer-controller":{"buffer-size":1000,"durable-queue":{"request-timeout":"3s","resend-first-interval":"1s","retry-attempts":10},"internal-ask-timeout":"60s"}}})
             println(ctx.system.settings.config.getConfig("akka.reliable-delivery"))
+            // akka.reliable-delivery.work-pulling.producer-controller.buffer-size
 
             // {"flow-control-window":50,"only-flow-control":false,"resend-interval-max":"30s","resend-interval-min":"2s"}))
             println(ctx.system.settings.config.getConfig("akka.reliable-delivery.consumer-controller"))
@@ -74,8 +75,8 @@ object Runner extends App {
               sys.toClassic
             )*/
 
-            ctx.system.scheduler.scheduleWithFixedDelay(3.seconds, 1.seconds) { () =>
-              master.tell(WorkMaster.Job(System.currentTimeMillis().toString))
+            ctx.system.scheduler.scheduleWithFixedDelay(3.seconds, 300.millis) { () =>
+              master.tell(WorkMaster.Job(System.currentTimeMillis.toString))
             }(ctx.executionContext)
 
             Behaviors.receiveSignal[SelfUp] {

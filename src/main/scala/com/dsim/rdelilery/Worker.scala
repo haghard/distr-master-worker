@@ -3,6 +3,7 @@ package com.dsim.rdelilery
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.delivery.ConsumerController
+import scala.concurrent.duration._
 
 //consumer talks with ConsumerController
 object Worker {
@@ -12,20 +13,19 @@ object Worker {
 
   private case class DeliveryEnvelope(d: ConsumerController.Delivery[Job]) extends Command
 
-  def apply(addr: String, windowSize: Int = 1 << 2): Behavior[Command] =
+  def apply(addr: String, batchSize: Int = 1 << 2): Behavior[Command] =
     Behaviors.setup { implicit ctx =>
       val deliveryAdapter =
         ctx.messageAdapter[ConsumerController.Delivery[Job]](DeliveryEnvelope(_))
 
-      //val config: Config = ???
-      //import akka.util.JavaDurationConverters.JavaDurationOps
-      import scala.concurrent.duration._
-      val settings = akka.actor.typed.delivery.ConsumerController
+      val settings = akka.actor.typed.delivery.ConsumerController.Settings(ctx.system)
+      /*val settings = akka.actor.typed.delivery.ConsumerController
         .Settings(ctx.system)
-        .withFlowControlWindow(windowSize)
+        //Many unconfirmed messages can be in flight between the ProducerController and ConsumerController, but their number is limited by a flow control window.
+        //.withFlowControlWindow(1)
         .withOnlyFlowControl(false)
         .withResendIntervalMin(2.seconds)
-        .withResendIntervalMax(10.seconds)
+        .withResendIntervalMax(10.seconds)*/
 
       /*val settings = akka.actor.typed.delivery.ConsumerController.Settings(
         config.getInt("flow-control-window"),
@@ -34,12 +34,11 @@ object Worker {
         config.getBoolean("only-flow-control")
       )*/
 
-      val consumerController =
-        ctx.spawn(ConsumerController(serviceKey, settings), "consumer-controller")
+      ctx
+        .spawn(ConsumerController(serviceKey, settings), "consumer-controller")
+        .tell(ConsumerController.Start(deliveryAdapter))
 
-      consumerController.tell(ConsumerController.Start(deliveryAdapter))
-
-      active(windowSize, Vector.empty)
+      active(batchSize, Vector.empty)
     }
 
   def active(windowSize: Int, buf: Vector[Long])(implicit ctx: ActorContext[Worker.Command]): Behavior[Command] =
@@ -48,7 +47,10 @@ object Worker {
         //val _ = ctx.log.warn(s"consume ${env.producerId}:${env.seqNr} msg: ${env.message.seqNum}")
 
         val up = buf :+ env.message.seqNum
-        // and when completed confirm
+
+        //The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
+        //while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
+        //So we need to confirm to receive the next message
         env.confirmTo.tell(ConsumerController.Confirmed)
 
         if (up.size == windowSize) {
