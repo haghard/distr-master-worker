@@ -2,7 +2,7 @@ import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 import sbt.CrossVersion
 
-val akkaVersion = "2.6.5"
+val akkaVersion = "2.6.6"
 
 lazy val scalacSettings = Seq(
   scalacOptions ++= Seq(
@@ -34,17 +34,17 @@ val `distr-master-worker` = project
 
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
-      "org.sisioh"        %% "akka-cluster-custom-downing" % "0.1.0",
+      //"org.sisioh"        %% "akka-cluster-custom-downing" % "0.1.0",
       "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion, //to shade old akka-cluster-sharding
 
-      "com.typesafe.akka" %% "akka-http" % "10.1.11",
-      "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.11",
-      "com.lightbend.akka.management" %% "akka-management-cluster-http" % "1.0.7",
+      "com.typesafe.akka" %% "akka-http" % "10.1.12",
+      "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.12",
+      "com.lightbend.akka.management" %% "akka-management-cluster-http" % "1.0.8",
 
       "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
       "ch.qos.logback" % "logback-classic" % "1.2.3",
       
-      ("com.lihaoyi" % "ammonite" % "2.1.0" % "test").cross(CrossVersion.full),
+      ("com.lihaoyi" % "ammonite" % "2.1.1" % "test").cross(CrossVersion.full),
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion),
 
     //
