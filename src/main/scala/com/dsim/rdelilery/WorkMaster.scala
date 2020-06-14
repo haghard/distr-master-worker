@@ -8,21 +8,19 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer}
 //producer talks with ProducerController
 
 /**
- *
- * Unconfirmed messages may be lost if the producer crashes. To avoid that you need to enable the durable queue on the producer side.
- * The stored unconfirmed messages will be redelivered when the corresponding producer is started again. Those messages may be routed to different
- * workers than before and some of them may have already been processed but the fact that they were confirmed had not been stored yet.
- * Meaning at-least-once delivery.
- *
- *
- *
- * All this stuff about messages being idempotent, retried and redelivered
- *
- * What types of things does it does:
- *  a) it sequence your messages. That means we can retry and then we can do deduplication on the other side.
- *  b) windowing of requests. it has flow control build to it.
- * 
- */
+  * Six things you can do in Akka 2.6 by Chris Batey  https://youtu.be/85FW9EUOixg?t=772
+  *
+  * Unconfirmed messages may be lost if the producer crashes. To avoid that you need to enable the durable queue on the producer side.
+  * The stored unconfirmed messages will be redelivered when the corresponding producer is started again. Those messages may be routed to different
+  * workers than before and some of them may have already been processed but the fact that they were confirmed had not been stored yet.
+  *
+ * All this stuff about messages being idempotent, retried and redelivered.
+  *
+ * What types of things does it do:
+  *  a) It sequence your messages to guarantee idempotency. This means we can retry and then we can do deduplication on the other side.
+  *  b) It has flow control build to it(not a simple req/resp).
+  *
+  */
 object WorkMaster {
 
   sealed trait Command
@@ -50,7 +48,7 @@ object WorkMaster {
       val cfg = ctx.system.settings.config.getConfig("akka.reliable-delivery")
       val bufferSize =
         cfg.getInt("work-pulling.producer-controller.buffer-size") +
-          cfg.getInt("consumer-controller.flow-control-window")
+        cfg.getInt("consumer-controller.flow-control-window")
 
       Behaviors.withStash(bufferSize) { implicit buf =>
         waitForDemand(0)

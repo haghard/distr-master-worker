@@ -37,13 +37,28 @@ Resume
 curl -w '\n' -X PUT -H 'Content-Type: multipart/form-data' -F operation=down http://localhost:2651/cluster/members/sim@127.0.0.1:2552
 
 
-Steps to reproduce 
-1. kill -stop 21342
-2. curl -w '\n' -X PUT -H 'Content-Type: multipart/form-data' -F operation=down http://localhost:2651/cluster/members/sim@127.0.0.1:2552
-3. kill -cont 21342
+Steps to reproduce
+1. 
 
-a.r.a.c.InboundActorRefCompression - Inbound message from originUid [-6086534924564321052] is using unknown compression table version. 
-It may have been sent with compression table built for previous incarnation of this system. Versions activeTable: 0, nextTable: 1, incomingTable: 6
+run 2 node: master:2551 and worker:2552
+
+2. 
+
+lsof -i :2552 | grep LISTEN | awk '{print $2}'
+kill -stop <pid>
+
+3. Wait till master removes worker from the cluster and do  
+
+kill -cont <pid>
+
+You should see this
+
+11:55:28.565UTC |WARN | [dsim-akka.remote.default-remote-dispatcher-10, dsim, InboundActorRefCompression(akka://dsim)] a.r.a.c.InboundActorRefCompression - Inbound message from originUid [-6328548669170509234] is using unknown compression table version. It may have been sent with compression table built for previous incarnation of this system. Versions activeTable: 0, nextTable: 1, incomingTable: 1
+11:55:28.565UTC |WARN | [dsim-akka.remote.default-remote-dispatcher-10, dsim, InboundManifestCompression(akka://dsim)] a.r.a.c.InboundManifestCompression - Inbound message from originUid [-6328548669170509234] is using unknown compression table version. It may have been sent with compression table built for previous incarnation of this system. Versions activeTable: 0, nextTable: 1, incomingTable: 1
+
+
+
+curl -w '\n' -X PUT -H 'Content-Type: multipart/form-data' -F operation=down http://localhost:2651/cluster/members/sim@127.0.0.1:2552
 
 
 https://discuss.lightbend.com/t/how-to-avoid-nodes-to-be-quarantined-in-akka-cluster/1932
@@ -51,11 +66,7 @@ https://manuel.bernhardt.io/2017/06/08/akka-anti-patterns-using-remoting/
 https://doc.akka.io/docs/akka/snapshot/remoting.html?language=scala#types-of-remote-interaction
 
 
-Right after singleton migration happened
-14:49:28.280UTC |WARN | [sim-akka.actor.internal-dispatcher-16, sim, Association(akka://sim)] akka.remote.artery.Association - 
-Association to [akka://sim@127.0.0.1:2551] with UID [840168982636099904] is irrecoverably failed. 
-UID is now quarantined and all messages to this UID will be delivered to dead letters. 
-Remote ActorSystem must be restarted to recover from this situation. Reason: Cluster member removed, previous status [Down]
+
 
 
 This 
@@ -73,8 +84,6 @@ https://doc.akka.io/docs/akka/current/remoting-artery.html#quarantine
 
 https://github.com/akka/akka-samples/tree/2.6/akka-sample-distributed-workers-scala
 https://github.com/akka/akka-samples/blob/2.6/akka-sample-distributed-workers-scala/src/main/scala/worker/WorkManager.scala
-
-
 
 
 https://www.lightbend.com/blog/how-to-distribute-application-state-with-akka-cluster-part-4-the-source-code
