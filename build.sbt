@@ -44,7 +44,7 @@ val `distr-master-worker` = project
       "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
       "ch.qos.logback" % "logback-classic" % "1.2.3",
       
-      ("com.lihaoyi" % "ammonite" % "2.1.1" % "test").cross(CrossVersion.full),
+      ("com.lihaoyi" % "ammonite" % "2.1.4" % "test").cross(CrossVersion.full),
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion),
 
     //

@@ -1,9 +1,8 @@
 package com.dsim.rdelilery
 
 import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.delivery.ConsumerController
-import scala.concurrent.duration._
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 
 //consumer talks with ConsumerController
 object Worker {
