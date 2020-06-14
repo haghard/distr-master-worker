@@ -20,6 +20,7 @@ import spray.json._
 import spray.json.DefaultJsonProtocol._
 
 object Api extends PathDirectives with Directives {
+
   sealed trait Reply
   final case class Status(master: String, workers: List[String]) extends Reply
   implicit val errorFormat0 = jsonFormat2(Status)
@@ -28,7 +29,7 @@ object Api extends PathDirectives with Directives {
   implicit val errorFormat1 = jsonFormat1(ServerError)
 
   def apply(
-    master: ActorRef[Master.GetWorkers],
+    master: ActorRef[Master.HttpReq],
     askTo: FiniteDuration
   )(implicit sys: akka.actor.typed.ActorSystem[Nothing]) = {
     implicit val to = akka.util.Timeout(askTo) //
@@ -36,7 +37,7 @@ object Api extends PathDirectives with Directives {
     extractLog { implicit log =>
       path("status") {
         get {
-          onRespComplete(master.ask[Reply](Master.GetWorkers(_))) {
+          onRespComplete(master.ask[Api.Status](Master.GetWorkers(_))) {
             case reply: Status =>
               complete(StatusCodes.OK -> Strict(`application/json`, ByteString(reply.toJson.compactPrint)))
           }

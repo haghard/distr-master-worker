@@ -18,8 +18,8 @@ object Master {
 
   final case class MembershipChanged(workers: Set[ActorRef[WProtocol]]) extends Protocol
 
-  sealed trait HttpReq                                           extends Protocol
-  final case class GetWorkers(replyTo: ActorRef[http.Api.Reply]) extends HttpReq
+  sealed trait HttpReq                                            extends Protocol
+  final case class GetWorkers(replyTo: ActorRef[http.Api.Status]) extends HttpReq
 
   def apply(master: Address): Behavior[Protocol] =
     Behaviors.setup { ctx =>

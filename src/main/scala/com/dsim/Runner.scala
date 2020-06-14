@@ -7,10 +7,9 @@ import java.util.concurrent.TimeUnit
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{Behavior, PostStop, Terminated}
 import akka.cluster.typed.{ClusterSingleton, SelfUp, SingletonActor, Unsubscribe}
-import com.dsim.http.Api
+import com.dsim.http.{Api, ServerBootstrap}
 import com.typesafe.config.ConfigFactory
 import akka.actor.typed.scaladsl.adapter._
-import com.dsim.http.com.evolutiongaming.livesim.launch.ServerBootstrap
 import com.dsim.rdelilery.WorkMaster
 
 import scala.concurrent.duration._
@@ -38,7 +37,6 @@ object Runner extends App {
         Behaviors.receive[SelfUp] {
           case (ctx, _ @SelfUp(_ /*state*/ )) =>
             //val upMemebers = state.members.filter(_.status == akka.cluster.MemberStatus.Up).map(_.address)
-
             cluster.subscriptions ! Unsubscribe(ctx.self)
 
             //ctx.spawn(ClusterListenerActor(), "cluster-ev")
@@ -55,7 +53,7 @@ object Runner extends App {
              */
 
             val master = ClusterSingleton(ctx.system).init(
-              SingletonActor(WorkMaster(cluster.selfMember.uniqueAddress.address), "master")
+              SingletonActor(rdelilery.WorkMaster(cluster.selfMember.uniqueAddress.address), "master")
             )
 
             //Default {"flow-control-window":50,"only-flow-control":false,"resend-interval-max":"30s","resend-interval-min":"2s"}
@@ -70,7 +68,7 @@ object Runner extends App {
             // {"flow-control-window":50,"only-flow-control":false,"resend-interval-max":"30s","resend-interval-min":"2s"}))
             println(ctx.system.settings.config.getConfig("akka.reliable-delivery.consumer-controller"))
 
-            /*val askTo = 3.seconds
+            /*val askTo = 2.seconds
             ServerBootstrap(Api(master.narrow[Master.HttpReq], askTo), hostName, port + 100, askTo.+(1.second))(
               sys.toClassic
             )*/
@@ -124,7 +122,7 @@ object Runner extends App {
 
     val _ = StdIn.readLine()
     system.log.warn("Shutting down ...")
-    system.terminate() //
+    system.terminate() //triggers CoordinatedShutdown
     val _ = Await.result(
       system.whenTerminated,
       cfg.getDuration("akka.coordinated-shutdown.default-phase-timeout", TimeUnit.SECONDS).seconds

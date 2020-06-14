@@ -24,8 +24,8 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer}
 object WorkMaster {
 
   sealed trait Command
-  final case class Job(jobDesc: String)                                               extends Command
-  private case class Demand(r: WorkPullingProducerController.RequestNext[Worker.Job]) extends Command
+  final case class Job(jobDesc: String)                                                     extends Command
+  private final case class Demand(r: WorkPullingProducerController.RequestNext[Worker.Job]) extends Command
 
   def apply(
     address: Address
