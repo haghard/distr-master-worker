@@ -49,7 +49,7 @@ object Master {
           ctx.log.warn("Membership changed: {}", workers.map(_.path).mkString(","))
           active(master, workers, ctx, counter)
         case GetWorkers(replyTo) =>
-          val localWorker = workers.filter(_.path.address.host.isEmpty).head
+          val localWorker = workers.filter(_.path.address.hasLocalScope).head
           val remote      = workers - localWorker
           //Add associated ip address to local worker to make it look the same as the remote workers look
           val localWorkerPath = ActorPath.fromString(

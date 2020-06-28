@@ -21,6 +21,9 @@ http 127.0.0.1:2652/cluster/members
 
 ### Notes
 
+https://doc.akka.io/docs/akka-enhancements/current/split-brain-resolver.html#using-the-split-brain-resolver
+
+
 Find the PID for the unreachable node:
 > lsof -i :2551 | grep LISTEN | awk '{print $2}'
 
