@@ -66,9 +66,6 @@ https://manuel.bernhardt.io/2017/06/08/akka-anti-patterns-using-remoting/
 https://doc.akka.io/docs/akka/snapshot/remoting.html?language=scala#types-of-remote-interaction
 
 
-
-
-
 This 
 16:33:14.285UTC |INFO | [dsim-akka.remote.default-remote-dispatcher-14, dsim, Association(akka://dsim)] akka.remote.artery.Association - Association to [akka://dsim@127.0.0.1:2552] having UID [-4559786446003828560] has been stopped. All messages to this UID will be delivered to dead letters. Reason: ActorSystem terminated
 indicates wrong shutdown 

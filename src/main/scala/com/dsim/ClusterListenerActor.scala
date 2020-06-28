@@ -11,12 +11,12 @@ object ClusterListenerActor {
   def apply(): Behavior[ClusterDomainEvent] =
     Behaviors.setup[ClusterDomainEvent] { ctx =>
       val cluster = Cluster(ctx.system)
-      cluster.subscriptions ! Subscribe(ctx.self.ref, classOf[ClusterDomainEvent])
+      cluster.subscriptions.tell(Subscribe(ctx.self.ref, classOf[ClusterDomainEvent]))
 
-      ctx.log.info(s"started actor ${ctx.self.path} - (${ctx.self.getClass})")
+      ctx.log.info(s"Started ${ctx.self.path} - (${ctx.self.getClass})")
 
       def active(): Behavior[ClusterDomainEvent] =
-        Behaviors.receiveMessage {
+        Behaviors.receiveMessagePartial {
           case MemberUp(member) =>
             ctx.log.info("Member is Up: {}", member.address)
             Behaviors.same
@@ -26,8 +26,6 @@ object ClusterListenerActor {
           case MemberRemoved(member, previousStatus) =>
             ctx.log.info("Member is Removed: {} after {}", member.address, previousStatus)
             Behaviors.same
-          case _ =>
-            Behaviors.same // ignore
         }
 
       active()
