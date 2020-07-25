@@ -5,7 +5,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.delivery.WorkPullingProducerController
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer}
 
-//producer talks with ProducerController
+//producer talks to ProducerController
 
 /**
   *  Reliable delivery: Work pulling mode (fan-out) Allows us to do thinks that are very simular to what kafka's consumer group
@@ -23,7 +23,6 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer}
   * What types of things does it do:
   *  a) It sequence your messages to guarantee idempotency. This means we can retry and then we can do deduplication on the other side.
   *  b) It has flow control build to it(not a simple req/resp).
-  *
   */
 object WorkMaster {
 

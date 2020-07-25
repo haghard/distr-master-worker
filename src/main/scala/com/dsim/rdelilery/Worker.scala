@@ -7,12 +7,10 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 //consumer talks with ConsumerController
 
 /**
-  *
   * The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
   * while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
   * So we need to confirm to receive the next message.
-  *
- */
+  */
 object Worker {
 
   sealed trait Command

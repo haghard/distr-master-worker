@@ -2,7 +2,7 @@ import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 import sbt.CrossVersion
 
-val akkaVersion = "2.6.6"
+val akkaVersion = "2.6.8"
 
 lazy val scalacSettings = Seq(
   scalacOptions ++= Seq(
@@ -22,7 +22,7 @@ lazy val scalacSettings = Seq(
   )
 )
 
-//++ 2.12.10 or ++ 2.13.2
+//++ 2.12.12 or ++ 2.13.3
 val `distr-master-worker` = project
   .in(file("."))
   .settings(SbtMultiJvm.multiJvmSettings: _*)
@@ -30,7 +30,7 @@ val `distr-master-worker` = project
   .settings(
     name := "dist-master-worker",
     version := "0.0.1",
-    scalaVersion := "2.13.2",
+    scalaVersion := "2.13.3",
 
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
@@ -44,7 +44,7 @@ val `distr-master-worker` = project
       "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
       "ch.qos.logback" % "logback-classic" % "1.2.3",
       
-      ("com.lihaoyi" % "ammonite" % "2.1.4" % "test").cross(CrossVersion.full),
+      ("com.lihaoyi" % "ammonite" % "2.2.0" % "test").cross(CrossVersion.full),
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion),
 
     //
