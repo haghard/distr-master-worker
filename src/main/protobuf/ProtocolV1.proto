@@ -1,5 +1,5 @@
 syntax = "proto3";
-package com.sim.domain.v1;
+package com.dsim.domain.v1;
 
 import "scalapb/scalapb.proto";
 import "google/protobuf/timestamp.proto";
@@ -7,12 +7,12 @@ import "google/protobuf/timestamp.proto";
 option (scalapb.options) = {
     single_file: true
     flat_package: true
-    preamble: "sealed trait ReqPB"
+    preamble: "sealed trait CommandPB"
     preamble: "sealed trait ReplyPB"
 };
 
 message ScheduleTaskPB {
-    option (scalapb.message).extends = "ReqPB";
+    option (scalapb.message).extends = "CommandPB";
     int64 seqNum = 1;
     bytes replyTo = 2;
 }
