@@ -5,7 +5,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.delivery.WorkPullingProducerController
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer}
 
-//producer talks with ProducerController
+//producer talks to ProducerController
 
 /**
   *  Reliable delivery: Work pulling mode (fan-out) Allows us to do thinks that are very simular to what kafka's consumer group

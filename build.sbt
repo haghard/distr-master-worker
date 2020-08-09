@@ -22,7 +22,7 @@ lazy val scalacSettings = Seq(
   )
 )
 
-//++ 2.12.10 or ++ 2.13.2
+//++ 2.12.12 or ++ 2.13.3
 val `distr-master-worker` = project
   .in(file("."))
   .settings(SbtMultiJvm.multiJvmSettings: _*)
