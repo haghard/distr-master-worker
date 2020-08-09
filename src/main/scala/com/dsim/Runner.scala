@@ -74,7 +74,7 @@ object Runner extends App {
             )*/
 
             ctx.system.scheduler.scheduleWithFixedDelay(3.seconds, 300.millis) { () =>
-              master.tell(WorkMaster.Job(System.currentTimeMillis.toString))
+              master.tell(WorkMaster.MasterJob(System.currentTimeMillis.toString))
             }(ctx.executionContext)
 
             Behaviors.receiveSignal[SelfUp] {

@@ -23,20 +23,19 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer}
   * What types of things does it do:
   *  a) It sequence your messages to guarantee idempotency. This means we can retry and then we can do deduplication on the other side.
   *  b) It has flow control build to it(not a simple req/resp).
-  *
   */
 object WorkMaster {
 
   sealed trait Command
-  final case class Job(jobDesc: String)                                                     extends Command
-  private final case class Demand(r: WorkPullingProducerController.RequestNext[Worker.Job]) extends Command
+  final case class MasterJob(jobDesc: String)                                                     extends Command
+  private final case class Demand(r: WorkPullingProducerController.RequestNext[Worker.WorkerJob]) extends Command
 
   def apply(
     address: Address
   ): Behavior[WorkMaster.Command] =
     Behaviors.setup { implicit ctx =>
       val producerControllerAdapter =
-        ctx.messageAdapter[WorkPullingProducerController.RequestNext[Worker.Job]](Demand(_))
+        ctx.messageAdapter[WorkPullingProducerController.RequestNext[Worker.WorkerJob]](Demand(_))
 
       ctx
         .spawn(
@@ -64,9 +63,9 @@ object WorkMaster {
     buf: StashBuffer[WorkMaster.Command]
   ): Behavior[Command] =
     Behaviors.receiveMessage {
-      case job: WorkMaster.Job => //comes from outside
+      case job: WorkMaster.MasterJob => //comes from outside
         if (buf.isFull) {
-          ctx.log.warn("Too many requests. Producer overloaded !!!")
+          ctx.log.warn("Too many requests. Master.Producer overloaded !!!")
           Behaviors.same
         } else {
           buf.stash(job)
@@ -79,14 +78,15 @@ object WorkMaster {
 
   def active(
     seqNum: Long,
-    next: WorkPullingProducerController.RequestNext[Worker.Job]
+    next: WorkPullingProducerController.RequestNext[Worker.WorkerJob]
   )(implicit ctx: ActorContext[WorkMaster.Command], buf: StashBuffer[WorkMaster.Command]): Behavior[Command] =
     Behaviors.receiveMessage {
-      case Job(desc) =>
+      case WorkMaster.MasterJob(desc) =>
         //val resultId = java.util.UUID.randomUUID()
         //next.askNextTo
-        ctx.log.warn(s"produce $seqNum")
-        next.sendNextTo.tell(Worker.Job(seqNum, desc))
+        val job = Worker.WorkerJob(seqNum, desc)
+        ctx.log.warn(s"Master produced: $job")
+        next.sendNextTo.tell(job)
         waitForDemand(seqNum + 1)
       case _: Demand =>
         throw new IllegalStateException("Unexpected Demand")

@@ -7,23 +7,21 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 //consumer talks with ConsumerController
 
 /**
-  *
   * The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
   * while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
   * So we need to confirm to receive the next message.
-  *
- */
+  */
 object Worker {
 
   sealed trait Command
-  final case class Job(seqNum: Long, jobDesc: String)
+  final case class WorkerJob(seqNum: Long, jobDesc: String)
 
-  private case class DeliveryEnvelope(d: ConsumerController.Delivery[Job]) extends Command
+  private case class DeliveryEnvelope(d: ConsumerController.Delivery[WorkerJob]) extends Command
 
   def apply(addr: String, batchSize: Int = 1 << 2): Behavior[Command] =
     Behaviors.setup { implicit ctx =>
       val deliveryAdapter =
-        ctx.messageAdapter[ConsumerController.Delivery[Job]](DeliveryEnvelope(_))
+        ctx.messageAdapter[ConsumerController.Delivery[WorkerJob]](DeliveryEnvelope(_))
 
       val settings = akka.actor.typed.delivery.ConsumerController.Settings(ctx.system)
       /*val settings = akka.actor.typed.delivery.ConsumerController

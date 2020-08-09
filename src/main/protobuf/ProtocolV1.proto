@@ -16,3 +16,12 @@ message ScheduleTaskPB {
     int64 seqNum = 1;
     bytes replyTo = 2;
 }
+
+message MasterJobPB {
+  string desc = 1;
+}
+
+message WorkerJobPB {
+  int64 seqNum = 1;
+  string desc = 2;
+}
