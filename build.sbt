@@ -1,8 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
-import sbt.CrossVersion
 
-val akkaVersion = "2.6.8"
+val akkaVersion = "2.6.12"
 
 lazy val scalacSettings = Seq(
   scalacOptions ++= Seq(
@@ -22,7 +21,7 @@ lazy val scalacSettings = Seq(
   )
 )
 
-//++ 2.12.12 or ++ 2.13.3
+//++ 2.12.13 or ++ 2.13.4
 val `distr-master-worker` = project
   .in(file("."))
   .settings(SbtMultiJvm.multiJvmSettings: _*)
@@ -30,33 +29,29 @@ val `distr-master-worker` = project
   .settings(
     name := "dist-master-worker",
     version := "0.0.1",
-    scalaVersion := "2.13.3",
+    scalaVersion := "2.13.4",
 
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
       //"org.sisioh"        %% "akka-cluster-custom-downing" % "0.1.0",
       "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion, //to shade old akka-cluster-sharding
 
-      "com.typesafe.akka" %% "akka-http" % "10.1.12",
-      "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.12",
-      "com.lightbend.akka.management" %% "akka-management-cluster-http" % "1.0.8",
+      "com.typesafe.akka" %% "akka-http" % "10.2.3",
+      "com.typesafe.akka" %% "akka-http-spray-json" % "10.2.3",
+      "com.lightbend.akka.management" %% "akka-management-cluster-http" % "1.0.9",
 
       "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
       "ch.qos.logback" % "logback-classic" % "1.2.3",
 
       "ru.odnoklassniki" % "one-nio" % "1.2.0",
       
-      ("com.lihaoyi" % "ammonite" % "2.2.0" % "test").cross(CrossVersion.full),
+      //("com.lihaoyi" % "ammonite" % "2.3.8" % "test").cross(CrossVersion.full),
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion),
 
-    //
-    fork in run := false,
+    //fork in run := true,
 
     // disable parallel tests
     parallelExecution in Test := false,
-    
-    javaOptions ++= Seq("-Xmx512m", "-Xms256m", "-XX:+UseG1GC", "-XX:+HeapDumpOnOutOfMemoryError")
-
   ) configs MultiJvm
 
 scalafmtOnCompile := true

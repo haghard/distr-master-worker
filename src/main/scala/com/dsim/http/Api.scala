@@ -37,9 +37,8 @@ object Api extends PathDirectives with Directives {
     extractLog { implicit log =>
       path("status") {
         get {
-          onRespComplete(master.ask[Api.Status](Master.GetWorkers(_))) {
-            case reply: Status =>
-              complete(StatusCodes.OK -> Strict(`application/json`, ByteString(reply.toJson.compactPrint)))
+          onRespComplete(master.ask[Api.Status](Master.GetWorkers(_))) { case reply: Status =>
+            complete(StatusCodes.OK -> Strict(`application/json`, ByteString(reply.toJson.compactPrint)))
           }
         }
       }

@@ -27,9 +27,8 @@ object Master {
 
       ctx.system.receptionist ! Receptionist.Subscribe(
         MasterWorkerKey,
-        ctx.messageAdapter[Receptionist.Listing] {
-          case MasterWorkerKey.Listing(workers) =>
-            MembershipChanged(workers)
+        ctx.messageAdapter[Receptionist.Listing] { case MasterWorkerKey.Listing(workers) =>
+          MembershipChanged(workers)
         }
       )
       active(master, Set.empty[ActorRef[WProtocol]], ctx)
@@ -51,6 +50,7 @@ object Master {
         case GetWorkers(replyTo) =>
           val localWorker = workers.filter(_.path.address.hasLocalScope).head
           val remote      = workers - localWorker
+
           //Add associated ip address to local worker to make it look the same as the remote workers look
           val localWorkerPath = ActorPath.fromString(
             s"akka://${Runner.SystemName}@${master.host.get}:${master.port.get}/${localWorker.path.elements.mkString("/")}"

@@ -1,4 +1,4 @@
-package com.dsim.rdelilery
+package com.dsim.rdelivery
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.delivery.ConsumerController
@@ -6,15 +6,14 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 
 //consumer talks with ConsumerController
 
-/**
-  * The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
+/** The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
   * while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
   * So we need to confirm to receive the next message.
   */
 object Worker {
 
   sealed trait Command
-  final case class WorkerJob(seqNum: Long, jobDesc: String)
+  final case class WorkerJob(seqNum: Long, jobDesc: Array[Byte])
 
   private case class DeliveryEnvelope(d: ConsumerController.Delivery[WorkerJob]) extends Command
 
@@ -46,24 +45,24 @@ object Worker {
       active(batchSize, Vector.empty)
     }
 
-  def active(windowSize: Int, buf: Vector[Long])(implicit ctx: ActorContext[Worker.Command]): Behavior[Command] =
-    Behaviors.receiveMessage {
-      case DeliveryEnvelope(env) =>
-        //val _ = ctx.log.warn(s"consume ${env.producerId}:${env.seqNr} msg: ${env.message.seqNum}")
+  def active(bufferSize: Int, buf: Vector[Long])(implicit ctx: ActorContext[Worker.Command]): Behavior[Command] =
+    Behaviors.receiveMessage { case DeliveryEnvelope(env) =>
+      //val _ = ctx.log.warn(s"consume ${env.producerId}:${env.seqNr} msg: ${env.message.seqNum}")
 
-        val up = buf :+ env.message.seqNum
+      val job = env.message
+      val up  = buf :+ job.seqNum
 
-        //The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
-        //while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
-        //So we need to confirm to receive the next message
-        env.confirmTo.tell(ConsumerController.Confirmed)
+      //The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
+      //while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
+      //So we need to confirm to receive the next message
+      env.confirmTo.tell(ConsumerController.Confirmed)
 
-        if (up.size == windowSize) {
-          ctx.log.warn(s"consume batch [${up.mkString(",")}]")
-          active(windowSize, Vector.empty)
-        } else
-          // does job ...
-          // store result with resultId key for later retrieval
-          active(windowSize, up)
+      if (up.size == bufferSize) {
+        ctx.log.warn(s"consume batch [${up.mkString(",")}]")
+        active(bufferSize, Vector.empty)
+      } else
+        // does job ...
+        // store result with resultId key for later retrieval
+        active(bufferSize, up)
     }
 }

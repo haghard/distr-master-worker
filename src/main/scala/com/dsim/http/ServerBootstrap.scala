@@ -13,6 +13,7 @@ import scala.util.{Failure, Success}
 
 object ServerBootstrap {
 
+  case object GuardianFailure               extends Reason
   private case object HttpServerBindFailure extends Reason
 
   private val terminationDeadline = 5.seconds
@@ -30,7 +31,8 @@ case class ServerBootstrap(
   private val cShutdown = CoordinatedShutdown(classicSystem)
 
   Http()
-    .bindAndHandle(routes, host, httpPort)
+    .newServerAt(host, httpPort)
+    .bindFlow(routes)
     .onComplete {
       case Failure(ex) =>
         classicSystem.log.error(s"Shutting down because can't bind on $host:$httpPort", ex)
@@ -54,8 +56,7 @@ case class ServerBootstrap(
 
         //graceful termination request being handled on this connection
         cShutdown.addTask(PhaseServiceRequestsDone, "http-api.terminate") { () =>
-          /**
-            * It doesn't accept new connection but it drains the existing connections
+          /** It doesn't accept new connection but it drains the existing connections
             * Until the `terminationDeadline` all the req that have been accepted will be completed
             * and only than the shutdown will continue
             */

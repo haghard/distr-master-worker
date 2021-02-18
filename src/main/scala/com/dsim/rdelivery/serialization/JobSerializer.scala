@@ -1,24 +1,25 @@
-package com.dsim.rdelilery.serialization
+/*
+package com.dsim.rdelivery.serialization
 
 import java.nio.ByteBuffer
 import java.util.concurrent.ThreadLocalRandom
-
 import akka.actor.ExtendedActorSystem
-import com.dsim.rdelilery.{WorkMaster, Worker}
-import com.sim.domain.v1.{MasterJobPB, WorkerJobPB}
+import com.dsim.domain.v1.{JobDescriptionPB, WorkerJobPB}
+import com.dsim.rdelivery.{Master, Worker}
 import one.nio.mem.{DirectMemory, FixedSizeAllocator}
 import akka.serialization.{ByteBufferSerializer, SerializerWithStringManifest}
 import com.google.protobuf.{CodedInputStream, CodedOutputStream}
 
-/**
-  * https://doc.akka.io/api/akka/current/akka/serialization/ByteBufferSerializer.html
-  * https://doc.akka.io/docs/akka/current/remoting-artery.html#bytebuffer-based-serialization
-  */
+import scala.util.Using
+
+/** https://doc.akka.io/api/akka/current/akka/serialization/ByteBufferSerializer.html
+ * https://doc.akka.io/docs/akka/current/remoting-artery.html#bytebuffer-based-serialization
+ */
 final class JobSerializer(val system: ExtendedActorSystem)
     extends SerializerWithStringManifest
     with ByteBufferSerializer {
 
-  override val identifier: Int = 999999
+  val identifier: Int = 999999
 
   val K          = 1024
   val extraSpace = 2 * K
@@ -32,13 +33,11 @@ final class JobSerializer(val system: ExtendedActorSystem)
   val allocator =
     new FixedSizeAllocator(maxFrameSize + extraSpace, (maxFrameSize + extraSpace) * concurrencyLevel)
 
-  override def manifest(o: AnyRef): String =
-    o.getClass.getName
+  override def manifest(o: AnyRef): String = o.getClass.getName
 
-  /**
-    * Artery introduces a new serialization mechanism which allows the ByteBufferSerializer to directly write into
-    * a shared java.nio.ByteBuffer instead of being forced to allocate and return an Array[Byte] for each serialized message.
-    */
+  /** Artery introduces a new serialization mechanism which allows the ByteBufferSerializer to directly write into
+ * a shared java.nio.ByteBuffer instead of being forced to allocate and return an Array[Byte] for each serialized message.
+ */
   override def toBinary(obj: AnyRef): Array[Byte] = {
     //println("toBinary " + obj.getClass.getName)
     //allocate a buffer in direct memory and wrap the buffer into ByteBuffer
@@ -63,18 +62,20 @@ final class JobSerializer(val system: ExtendedActorSystem)
     }
   }
 
-  override def toBinary(o: AnyRef, buf: ByteBuffer): Unit =
+  override def toBinary(o: AnyRef, directByteBuffer: ByteBuffer): Unit =
     o match {
-      case cmd: WorkMaster.Command =>
+      case cmd: Master.Command =>
         cmd match {
-          case WorkMaster.MasterJob(jobDesc) =>
-            buf.put(MasterJobPB(jobDesc).toByteArray)
+          case Master.JobDescription(jobDesc) =>
+            val m = JobDescriptionPB(jobDesc)
+            Using.resource(new ByteBufferOutputStream(directByteBuffer))(m.writeTo(_))
+          //directByteBuffer.put(m.toByteArray)
           case other =>
             throw new IllegalArgumentException(s"Undefined toBinary for $other")
         }
       case job: Worker.WorkerJob =>
         //WorkerJobPB(job.seqNum, job.jobDesc).writeTo(CodedOutputStream.newInstance(buf))
-        buf.put(WorkerJobPB(job.seqNum, job.jobDesc).toByteArray)
+        directByteBuffer.put(WorkerJobPB(job.seqNum, job.jobDesc).toByteArray)
     }
 
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef = {
@@ -94,16 +95,18 @@ final class JobSerializer(val system: ExtendedActorSystem)
     }
   }
 
-  override def fromBinary(buf: ByteBuffer, manifest: String): AnyRef =
-    if (manifest == classOf[WorkMaster.MasterJob].getName) {
-      val pb = MasterJobPB.parseFrom(CodedInputStream.newInstance(buf))
-      WorkMaster.MasterJob(pb.desc)
+  override def fromBinary(buf: ByteBuffer, manifest: String): AnyRef = {
+    println("fromBinaryBB " + manifest)
+    if (manifest == classOf[Master.JobDescription].getName) {
+      val pb = JobDescriptionPB.parseFrom(CodedInputStream.newInstance(buf))
+      Master.JobDescription(pb.desc)
     } else if (manifest == classOf[Worker.WorkerJob].getName) {
       val pb = WorkerJobPB.parseFrom(CodedInputStream.newInstance(buf))
       Worker.WorkerJob(pb.seqNum, pb.desc)
     } else throw new IllegalArgumentException(s"Undefined fromBinary for $manifest")
-
+  }
 }
+ */
 
 /*
   if (manifest == classOf[WorkMaster.MasterJob].getName)

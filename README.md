@@ -2,10 +2,9 @@
 
 ```bash
     
-runMain com.sim.Runner 2551
-runMain com.sim.Runner 2552
-runMain com.sim.Runner 2553
-
+sbt "runMain com.sim.Runner 2551"
+sbt "runMain com.sim.Runner 2552"
+sbt "runMain com.sim.Runner 2553"
 
 
 http 127.0.0.1:2651/status
@@ -90,3 +89,8 @@ https://www.lightbend.com/blog/how-to-distribute-application-state-with-akka-clu
 https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
 
 
+
+## Potential bug in 
+
+https://discuss.lightbend.com/t/work-pulling-unexpected-requestnext-messages/7552/2
+https://github.com/akka/akka/issues/29854

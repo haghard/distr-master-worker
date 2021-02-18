@@ -19,11 +19,10 @@ object Worker {
     }
 
   def idle(workerAddr: String, master: ActorRef[Master.Protocol], ctx: ActorContext[WProtocol]): Behavior[WProtocol] =
-    Behaviors.receiveMessage {
-      case ScheduleTask(seqNum, replyTo) =>
-        ctx.log.info("Worker {} gets task {}", workerAddr, seqNum)
-        //if (java.util.concurrent.ThreadLocalRandom.current().nextDouble < .4 && !addr.contains("2551")) throw new Exception("Boom !!!")
-        replyTo.tell(TaskAck(seqNum))
-        Behaviors.same
+    Behaviors.receiveMessage { case ScheduleTask(seqNum, replyTo) =>
+      ctx.log.info("Worker {} gets task {}", workerAddr, seqNum)
+      //if (java.util.concurrent.ThreadLocalRandom.current().nextDouble < .4 && !addr.contains("2551")) throw new Exception("Boom !!!")
+      replyTo.tell(TaskAck(seqNum))
+      Behaviors.same
     }
 }
