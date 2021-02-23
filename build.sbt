@@ -2,10 +2,11 @@ import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
 val akkaVersion = "2.6.12"
+val cassandraPluginVersion = "1.0.4"  //"0.103"
 
 lazy val scalacSettings = Seq(
   scalacOptions ++= Seq(
-    "-deprecation",             // Emit warning and location for usages of deprecated APIs.
+    //"-deprecation",             // Emit warning and location for usages of deprecated APIs.
     "-unchecked",               // Enable additional warnings where generated code depends on assumptions.
     "-encoding", "UTF-8",       // Specify character encoding used by source files.
     "-Ywarn-dead-code",         // Warn when dead code is identified.
@@ -29,32 +30,51 @@ val `distr-master-worker` = project
   .settings(
     name := "dist-master-worker",
     version := "0.0.1",
-    scalaVersion := "2.13.4",
+    scalaVersion := "2.13.5",
 
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
-      //"org.sisioh"        %% "akka-cluster-custom-downing" % "0.1.0",
-      "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion, //to shade old akka-cluster-sharding
+      //https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
+      "com.typesafe.akka" %% "akka-cluster-typed"      % akkaVersion,
+      "com.typesafe.akka" %% "akka-persistence-typed"  % akkaVersion, //to shade old akka-cluster-sharding
 
-      "com.typesafe.akka" %% "akka-http" % "10.2.3",
-      "com.typesafe.akka" %% "akka-http-spray-json" % "10.2.3",
+      //"com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
+      "com.typesafe.akka" %% "akka-persistence-cassandra" % cassandraPluginVersion,
+      // this allows us to start cassandra from the sample
+      "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % cassandraPluginVersion,
+
+      //"org.iq80.leveldb"            % "leveldb"          % "0.7",
+      //"org.fusesource.leveldbjni"   % "leveldbjni-all"   % "1.8",
+
+      //"com.typesafe.akka" %% "akka-cluster-sharding-typed"  % akkaVersion, //to shade old akka-cluster-sharding
+
+      "com.typesafe.akka" %% "akka-http"               % "10.2.3",
+      "com.typesafe.akka" %% "akka-http-spray-json"    % "10.2.3",
       "com.lightbend.akka.management" %% "akka-management-cluster-http" % "1.0.9",
 
-      "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-      "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "com.typesafe.akka" %% "akka-slf4j"       %   akkaVersion,
+      "ch.qos.logback"    %  "logback-classic"  %   "1.2.3",
 
-      "ru.odnoklassniki" % "one-nio" % "1.2.0",
+      //"ru.odnoklassniki" % "one-nio" % "1.2.0",
       
-      //("com.lihaoyi" % "ammonite" % "2.3.8" % "test").cross(CrossVersion.full),
+      //("com.lihaoyi" % "ammonite" % "2.3.8-32-64308dc3" % "test").cross(CrossVersion.full),
+
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion),
 
-    //fork in run := true,
-
-    // disable parallel tests
-    parallelExecution in Test := false,
+      //fork in run := true,
+      parallelExecution in Test := false,
   ) configs MultiJvm
 
+
 scalafmtOnCompile := true
+
+//Global / cancelable := false
+
+// transitive dependency of akka 2.5x that is brought in
+dependencyOverrides += "com.typesafe.akka" %% "akka-protobuf"               % akkaVersion
+dependencyOverrides += "com.typesafe.akka" %% "akka-persistence"            % akkaVersion
+dependencyOverrides += "com.typesafe.akka" %% "akka-cluster-sharding"       % akkaVersion
+//dependencyOverrides += "com.typesafe.akka" %% "akka-persistence-typed"      % akkaVersion
+//dependencyOverrides += "com.typesafe.akka" %% "akka-cluster-sharding-typed" % akkaVersion
 
 //test:run test:console
 sourceGenerators in Test += Def.task {

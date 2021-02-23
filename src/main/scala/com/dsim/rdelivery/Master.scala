@@ -1,15 +1,13 @@
 package com.dsim.rdelivery
 
-import akka.actor.Address
 import akka.actor.typed.Behavior
 import akka.actor.typed.delivery.WorkPullingProducerController
-import akka.actor.typed.scaladsl.adapter.{TypedActorContextOps, TypedActorSystemOps}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer}
-import akka.serialization.SerializationExtension
-import akka.util.ByteString
+import akka.persistence.typed.PersistenceId
+import akka.util.Timeout
 
-import java.nio.ByteBuffer
 import java.util.concurrent.ThreadLocalRandom
+import scala.concurrent.duration.DurationInt
 
 //producer talks to ProducerController
 
@@ -32,50 +30,64 @@ import java.util.concurrent.ThreadLocalRandom
 object Master {
 
   sealed trait Command
-  final case class JobDescription(jobDesc: String)                                                   extends Command
-  private final case class PullNext(rn: WorkPullingProducerController.RequestNext[Worker.WorkerJob]) extends Command
+  final case class JobDescription(jobDesc: String) extends Command
+  private final case class ReqNextWrapper(rn: WorkPullingProducerController.RequestNext[Worker.WorkerJob])
+      extends Command
+  private final case class AskReply(seqNum: Long, timeout: Boolean) extends Command
 
-  def apply(
-    address: Address
-  ): Behavior[Master.Command] =
-    Behaviors.setup { implicit ctx =>
-      val producerControllerAdapter =
-        ctx.messageAdapter[WorkPullingProducerController.RequestNext[Worker.WorkerJob]](PullNext(_))
+  //case object ShutDown extends Command
 
+  implicit val askTimeout: Timeout = Timeout(3.second)
+
+  def apply(): Behavior[Master.Command] =
+    Behaviors.setup { implicit ctx ⇒
       //val serialization = SerializationExtension(ctx.system.toClassic)
       //val serializer = serialization.serializerFor(classOf[akka.actor.typed.delivery.ConsumerController.SequencedMessage[_]])
       //ctx.log.error("*** {}:{} ****", serializer.identifier, serializer.getClass.getName)
 
+      //Messages are sent from the Master to WorkPullingProducerController and via ConsumerController actors, which handle the delivery and confirmation of the processing in the destination worker (consumer) actor.
+
+      //select sequence_nr from akka.messages where persistence_id = 'messages' and partition_nr = 0;
+      val durableQueue =
+        akka.persistence.typed.delivery
+          .EventSourcedProducerQueue[Worker.WorkerJob](PersistenceId.ofUniqueId("messages"))
+
+      //WorkPullingProducerController
       ctx
         .spawn(
           WorkPullingProducerController(
             producerId = "master",
             workerServiceKey = serviceKey,
-            durableQueueBehavior = None
+            durableQueueBehavior = Some(durableQueue) //None
           ),
           "producer-controller"
         )
-        .tell(WorkPullingProducerController.Start(producerControllerAdapter))
+        .tell(
+          WorkPullingProducerController.Start(
+            ctx.messageAdapter[WorkPullingProducerController.RequestNext[Worker.WorkerJob]](ReqNextWrapper(_))
+          )
+        )
 
       val cfg = ctx.system.settings.config.getConfig("akka.reliable-delivery")
       val bufferSize =
         cfg.getInt("work-pulling.producer-controller.buffer-size") +
         cfg.getInt("consumer-controller.flow-control-window")
 
-      Behaviors.withStash(bufferSize)(implicit buf => idle(0))
+      ctx.log.warn("★ ★ ★ ★   Master [buffer:{}]  ★ ★ ★ ★", bufferSize)
+      Behaviors.withStash(bufferSize)(implicit buf ⇒ idle(0))
     }
 
   def idle(seqNum: Long)(implicit
     ctx: ActorContext[Master.Command],
     buf: StashBuffer[Master.Command]
   ): Behavior[Command] =
-    Behaviors.receiveMessage {
-      case job: Master.JobDescription => //comes from outside
-        if (buf.isFull) ctx.log.warn("Too many requests. Master.Producer overloaded !!!")
+    Behaviors.receiveMessagePartial {
+      case job: Master.JobDescription ⇒ //comes from outside
+        if (buf.isFull) ctx.log.warn("Too many requests. Master.Producer is overloaded !!!")
         else buf.stash(job)
         Behaviors.same
 
-      case PullNext(next) => //comes from producerController when worker telling that the consume is ready to consume
+      case ReqNextWrapper(next) ⇒
         buf.unstashAll(active(seqNum, next))
     }
 
@@ -84,19 +96,36 @@ object Master {
     next: WorkPullingProducerController.RequestNext[Worker.WorkerJob]
   )(implicit ctx: ActorContext[Master.Command], buf: StashBuffer[Master.Command]): Behavior[Command] =
     Behaviors.receiveMessage {
-      case Master.JobDescription(desc) =>
-        val b = new Array[Byte](1024 * 33)
+      case Master.JobDescription(desc @ _) ⇒
+        val b = new Array[Byte](1024 * 1)
         ThreadLocalRandom.current().nextBytes(b)
+
         val job = Worker.WorkerJob(seqNum, b)
+        next.sendNextTo.tell(job)
         ctx.log.warn(s"Produced: ${job.seqNum}")
 
-        next.sendNextTo.tell(job)
-        //next.askNextTo
-
+        /*
+        ctx.ask[MessageWithConfirmation[Worker.WorkerJob], akka.Done](
+          next.askNextTo,
+          askReplyTo => MessageWithConfirmation(job, askReplyTo)) {
+          case Success(_) => AskReply(seqNum, timeout = false)
+          case Failure(_)    => AskReply(seqNum, timeout = true)
+        }
+        waitForNext()
+         */
         idle(seqNum + 1)
-      case _: PullNext =>
+      case _: ReqNextWrapper ⇒
         ctx.log.error("Unexpected Demand. Stop the Master")
         Behaviors.stopped
-      //throw new IllegalStateException("Unexpected Demand")
     }
+
+  /*def waitForNext(): Behavior[Command] =
+    Behaviors.receiveMessage {
+      case Master.JobDescription(desc @ _) ⇒
+        stashBuffer.unstashAll(active(next))
+      case AskReply(resultId, timeout) =>
+        val response = if (timeout) ConvertTimedOut(resultId) else ConvertAccepted(resultId)
+        originalReplyTo ! response
+        Behaviors.same
+    }*/
 }

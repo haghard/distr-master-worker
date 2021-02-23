@@ -8,5 +8,5 @@ import com.dsim.rdelivery.Worker.WorkerJob
 //https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
 package object rdelivery {
 
-  val serviceKey = ServiceKey[ConsumerController.Command[WorkerJob]]("Workers")
+  val serviceKey = ServiceKey[ConsumerController.Command[WorkerJob]]("workers")
 }

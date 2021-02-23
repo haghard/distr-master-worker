@@ -15,12 +15,44 @@ http 127.0.0.1:2651/cluster/members
 http 127.0.0.1:2652/cluster/members
 
 
+https://www.sestevez.com/sestevez/CassandraDataModeler/
+
+describe keyspaces;
+
+use msg;
+
+drop keyspace msg;
+
+select persistence_id, sequence_nr, timestamp, timebucket, ser_id, ser_manifest, writer_uuid from msg.msg_journal where persistence_id = 'messages' and partition_nr = 0;
+
+CREATE TABLE msg.msg_journal (
+    persistence_id text,
+    partition_nr bigint,
+    sequence_nr bigint,
+    timestamp timeuuid,
+    event blob,
+    event_manifest text,
+    meta blob,
+    meta_ser_id int,
+    meta_ser_manifest text,
+    ser_id int,
+    ser_manifest text,
+    tags set<text>,
+    timebucket text,
+    writer_uuid text,
+    PRIMARY KEY ((persistence_id, partition_nr), sequence_nr, timestamp)
+) WITH CLUSTERING ORDER BY (sequence_nr ASC, timestamp ASC)
+  
+CREATE TABLE msg.metadata (
+    persistence_id text PRIMARY KEY,
+    deleted_to bigint,
+    properties map<text, text>
+)
+
 ```
 
 
 ### Notes
-
-https://doc.akka.io/docs/akka-enhancements/current/split-brain-resolver.html#using-the-split-brain-resolver
 
 
 Find the PID for the unreachable node:
@@ -59,7 +91,6 @@ You should see this
 11:55:28.565UTC |WARN | [dsim-akka.remote.default-remote-dispatcher-10, dsim, InboundManifestCompression(akka://dsim)] a.r.a.c.InboundManifestCompression - Inbound message from originUid [-6328548669170509234] is using unknown compression table version. It may have been sent with compression table built for previous incarnation of this system. Versions activeTable: 0, nextTable: 1, incomingTable: 1
 
 
-
 curl -w '\n' -X PUT -H 'Content-Type: multipart/form-data' -F operation=down http://localhost:2651/cluster/members/sim@127.0.0.1:2552
 
 
@@ -71,7 +102,7 @@ https://doc.akka.io/docs/akka/snapshot/remoting.html?language=scala#types-of-rem
 This 
 16:33:14.285UTC |INFO | [dsim-akka.remote.default-remote-dispatcher-14, dsim, Association(akka://dsim)] akka.remote.artery.Association - Association to [akka://dsim@127.0.0.1:2552] having UID [-4559786446003828560] has been stopped. All messages to this UID will be delivered to dead letters. Reason: ActorSystem terminated
 indicates wrong shutdown 
-and as a result Node [akka://dsim@127.0.0.1:2551] - Marking node as UNREACHABLE [Member(address = akka://dsim@127.0.0.1:2552
+and as a result Node [akka://dsim@127.0.0.1:2551] - Marking node as UNREACHABLE [Member(address = akka://dsim@127.0.0.1:2552)]
 
 This indicates kill -9 
 17:05:16.824UTC |WARN | [dsim-akka.actor.internal-dispatcher-4, dsim, Association(akka://dsim)] akka.remote.artery.Association - Association to [akka://dsim@127.0.0.1:2551] with UID [-8127006961833515351] is irrecoverably failed. UID is now quarantined and all messages to this UID will be delivered to dead letters. Remote ActorSystem must be restarted to recover from this situation. Reason: Cluster member removed, previous status [Down]
@@ -89,8 +120,13 @@ https://www.lightbend.com/blog/how-to-distribute-application-state-with-akka-clu
 https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
 
 
+### Event-driven Finite State Machines
+https://christopherhunt-software.blogspot.com/2021/02/event-driven-finite-state-machines.html?spref=tw
 
-## Potential bug in 
+
+## Potential bugs 
 
 https://discuss.lightbend.com/t/work-pulling-unexpected-requestnext-messages/7552/2
 https://github.com/akka/akka/issues/29854
+
+
