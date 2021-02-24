@@ -5,11 +5,10 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.delivery.ConsumerController
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 
-import java.util.concurrent.ThreadLocalRandom
 import scala.collection.mutable
 import scala.concurrent.duration.DurationInt
 
-//consumer talks with ConsumerController
+//The consumer talks with ConsumerController
 
 /** The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
   * while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
@@ -22,7 +21,7 @@ object Worker {
   case object Flush                                                              extends Command
   private case class DeliveryEnvelope(d: ConsumerController.Delivery[WorkerJob]) extends Command
 
-  def apply(address: Address, batchSize: Int = 1 << 5): Behavior[Command] =
+  def apply(address: Address): Behavior[Command] =
     Behaviors.setup { implicit ctx ⇒
       //val config = ctx.system.settings.config
       val settings = akka.actor.typed.delivery.ConsumerController.Settings(ctx.system)
@@ -43,7 +42,9 @@ object Worker {
         config.getBoolean("only-flow-control")
       )*/
 
-      ctx.log.warn("★ ★ ★ ★   Worker {} [batchSize:{}]  ★ ★ ★ ★", address, batchSize)
+      val flushPeriod = 3.second
+
+      ctx.log.warn("★ ★ ★ ★   Worker {} ★ ★ ★ ★", address)
 
       //ConsumerController
       ctx
@@ -52,12 +53,48 @@ object Worker {
 
       Behaviors.withTimers { t ⇒
         //flush timeout  1.second
-        t.startTimerAtFixedRate(Flush, 3.second)
-        active(new mutable.ListBuffer[Long](), true)
+        t.startTimerAtFixedRate(Flush, flushPeriod)
+        active(new mutable.ListBuffer[Long]())
+        //active0(new mutable.ListBuffer[Long](), true)
       }
     }
 
   def active(
+    buf: mutable.ListBuffer[Long]
+  )(implicit ctx: ActorContext[Worker.Command]): Behavior[Command] =
+    Behaviors.receiveMessage {
+      case Flush ⇒
+        if (buf.nonEmpty) {
+          ctx.log.warn(s"Flush processed batch [${buf.mkString(",")}]")
+          buf.clear()
+          active(buf)
+        } else active(buf)
+      case DeliveryEnvelope(env) ⇒
+        //val _   = ctx.log.warn(s"received { env:${env.seqNr}, msg:${env.message.seqNum} }")
+        val job = env.message
+        /*if (isFirst) {
+          //buf.append(job.seqNum)
+          //buf.addOne(job.seqNum)
+          buf += job.seqNum
+          env.confirmTo.tell(ConsumerController.Confirmed)
+        } else if (java.util.concurrent.ThreadLocalRandom.current().nextBoolean()) {
+          buf += job.seqNum
+          env.confirmTo.tell(ConsumerController.Confirmed)
+        }
+        active(buf)
+         */
+
+        buf += job.seqNum
+
+        //The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
+        //while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
+        //So we need to confirm to receive the next message
+        env.confirmTo.tell(ConsumerController.Confirmed)
+        active(buf)
+    }
+
+  //
+  def active0(
     buf: mutable.ListBuffer[Long],
     isFirst: Boolean = false
   )(implicit ctx: ActorContext[Worker.Command]): Behavior[Command] =
@@ -69,31 +106,17 @@ object Worker {
           active(buf)
         } else active(buf)
       case DeliveryEnvelope(env) ⇒
-        val _   = ctx.log.warn(s"received { env:${env.seqNr}, msg:${env.message.seqNum} }")
+        //val _   = ctx.log.warn(s"received { env:${env.seqNr}, msg:${env.message.seqNum} }")
         val job = env.message
-        /*if (isFirst) {
+        if (isFirst) {
           //buf.append(job.seqNum)
           //buf.addOne(job.seqNum)
           buf += job.seqNum
           env.confirmTo.tell(ConsumerController.Confirmed)
-        } else if (ThreadLocalRandom.current().nextBoolean()) {
+        } else if (java.util.concurrent.ThreadLocalRandom.current().nextBoolean()) {
           buf += job.seqNum
           env.confirmTo.tell(ConsumerController.Confirmed)
         }
         active(buf)
-        */
-
-        buf += job.seqNum
-        env.confirmTo.tell(ConsumerController.Confirmed)
-        active(buf)
-
-      //The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
-      //while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
-      //So we need to confirm to receive the next message
-
-      /*if (up.size == bufferSize) {
-        ctx.log.warn(s"consume batch [${up.mkString(",")}]")
-        active(bufferSize, Vector.empty)
-      } else active(bufferSize, up)*/
     }
 }

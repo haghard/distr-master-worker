@@ -33,7 +33,6 @@ val `distr-master-worker` = project
     scalaVersion := "2.13.5",
 
     libraryDependencies ++= Seq(
-      //https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
       "com.typesafe.akka" %% "akka-cluster-typed"      % akkaVersion,
       "com.typesafe.akka" %% "akka-persistence-typed"  % akkaVersion, //to shade old akka-cluster-sharding
 

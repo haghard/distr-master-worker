@@ -28,10 +28,6 @@ final class DataSerializer(system: ExtendedActorSystem)
 
   //override val identifier: Int = super.identifier 36
 
-  // you need to know the maximum size in bytes of the serialized messages
-  val maxFrameSize = system.settings.config.getBytes("akka.remote.artery.advanced.maximum-frame-size").toInt
-  val bufferPool   = new akka.io.DirectByteBufferPool(defaultBufferSize = maxFrameSize, maxPoolEntries = 1 << 5)
-
   override def manifest(obj: AnyRef): String =
     obj match {
       case _: Master.JobDescription ⇒ obj.getClass.getName
@@ -53,10 +49,8 @@ final class DataSerializer(system: ExtendedActorSystem)
   override def toBinary(o: AnyRef, directByteBuffer: ByteBuffer): Unit =
     o match {
       case Master.JobDescription(desc) ⇒
-        //system.log.warning("toBinary: JobDescription {}", buf.hasArray)
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(JobDescriptionPB(desc).writeTo(_))
       case job: Worker.WorkerJob ⇒
-        //system.log.warning("toBinary: WorkerJob {}", buf.hasArray)
         //com.google.protobuf.ByteString.copyFrom(???)
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(
           WorkerJobPB(job.seqNum, com.google.protobuf.ByteString.readFrom(new ByteArrayInputStream(job.jobDesc)))
@@ -65,17 +59,19 @@ final class DataSerializer(system: ExtendedActorSystem)
       // from akka.cluster.typed.internal.delivery.ReliableDeliverySerializer
       case m: ConsumerController.SequencedMessage[_] ⇒
         val msg = sequencedMessageToBinary(m)
-
+        /*
         msg.getProducerId
         msg.getSeqNr
         msg.getMessage.getMessageManifest.toStringUtf8
         msg.getMessage.getSerializedSize
+         */
 
         system.log.warning(
-          "SequencedMessage: {} Size:[{}:{}]",
+          "toBinary: SequencedMessage:{} Sizes:[{}:{}] IsDirect:{}",
           msg.getMessage.getMessageManifest.toStringUtf8,
           msg.getSerializedSize,
-          msg.getMessage.getSerializedSize
+          msg.getMessage.getSerializedSize,
+          directByteBuffer.isDirect
         )
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(msg.writeTo(_))
       case m: ProducerControllerImpl.Ack ⇒
@@ -114,7 +110,6 @@ final class DataSerializer(system: ExtendedActorSystem)
       //val pb = JobDescriptionPB.parseFrom(com.google.protobuf.CodedInputStream.newInstance(directByteBuffer))
       Master.JobDescription(pb.desc)
     } else if (manifest == classOf[Worker.WorkerJob].getName) {
-      //WorkerJobPB.parseFrom(com.google.protobuf.CodedInputStream.newInstance(directByteBuffer))
       val pb = WorkerJobPB.parseFrom(new ByteBufferInputStream(byteBuffer))
       Worker.WorkerJob(pb.seqNum, pb.desc.toByteArray)
     } else if (manifest == "a" /*super.SequencedMessageManifest*/ ) {
@@ -138,13 +133,30 @@ final class DataSerializer(system: ExtendedActorSystem)
       super.fromBinary(bytes, manifest)
     }
 
+  override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef =
+    fromBinary(ByteBuffer.wrap(bytes), manifest)
+
+  /*
+
+  val maxFrameSize = system.settings.config.getBytes("akka.remote.artery.advanced.maximum-frame-size").toInt
+  val bufferPool   = new akka.io.DirectByteBufferPool(defaultBufferSize = maxFrameSize, maxPoolEntries = 1 << 5)
+
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef = {
     val directByteBuffer = bufferPool.acquire()
     try {
       directByteBuffer.put(bytes)
       directByteBuffer.flip()
       fromBinary(directByteBuffer, manifest)
+    } catch {
+      case ex: java.nio.BufferOverflowException ⇒
+        throw new IllegalArgumentException(
+          s"There is insufficient space in this buffer. MaxFrameSize:$maxFrameSize - Bytes: ${bytes.size}",
+          ex
+        )
+      case other ⇒
+        throw new IllegalArgumentException(s"Can't deserialize bytes§ in [${this.getClass.getName}]", other)
     } finally bufferPool.release(directByteBuffer)
   }
-  //fromBinary(ByteBuffer.wrap(bytes), manifest)
+   */
+
 }

@@ -37,8 +37,6 @@ object Master {
 
   //case object ShutDown extends Command
 
-  implicit val askTimeout: Timeout = Timeout(3.second)
-
   def apply(): Behavior[Master.Command] =
     Behaviors.setup { implicit ctx ⇒
       //val serialization = SerializationExtension(ctx.system.toClassic)
@@ -105,6 +103,9 @@ object Master {
         ctx.log.warn(s"Produced: ${job.seqNum}")
 
         /*
+        https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#ask-from-the-producer
+
+        implicit val askTimeout: Timeout = Timeout(3.second)
         ctx.ask[MessageWithConfirmation[Worker.WorkerJob], akka.Done](
           next.askNextTo,
           askReplyTo => MessageWithConfirmation(job, askReplyTo)) {
