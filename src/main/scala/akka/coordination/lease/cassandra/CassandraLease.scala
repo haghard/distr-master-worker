@@ -64,7 +64,7 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
     cqlSession
       .flatMap { cqlSession ⇒
         system.log.warning("★ ★ ★ ★ CassandraLease:acquire {} by {} ★ ★ ★ ★", settings.leaseName, settings.ownerName)
-        //Can in fail but still acquired the lease
+        //Can in fail but still acquired the lease ???
         cqlSession.executeAsync(insert).toScala.map(_.wasApplied())
       }
 
