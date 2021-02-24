@@ -1,8 +1,9 @@
 import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.12"
+val akkaVersion = "2.6.13"
 val cassandraPluginVersion = "1.0.4"  //"0.103"
+val AkkaManagementVersion  = "1.0.9"
 
 lazy val scalacSettings = Seq(
   scalacOptions ++= Seq(
@@ -41,14 +42,18 @@ val `distr-master-worker` = project
       // this allows us to start cassandra from the sample
       "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % cassandraPluginVersion,
 
+      "com.typesafe.akka" %% "akka-coordination" % akkaVersion,
+      "com.lightbend.akka.management" %% "akka-lease-kubernetes" % AkkaManagementVersion,
+
+
       //"org.iq80.leveldb"            % "leveldb"          % "0.7",
       //"org.fusesource.leveldbjni"   % "leveldbjni-all"   % "1.8",
 
       //"com.typesafe.akka" %% "akka-cluster-sharding-typed"  % akkaVersion, //to shade old akka-cluster-sharding
 
-      "com.typesafe.akka" %% "akka-http"               % "10.2.3",
-      "com.typesafe.akka" %% "akka-http-spray-json"    % "10.2.3",
-      "com.lightbend.akka.management" %% "akka-management-cluster-http" % "1.0.9",
+      "com.typesafe.akka" %% "akka-http"               % "10.2.4",
+      "com.typesafe.akka" %% "akka-http-spray-json"    % "10.2.4",
+      "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaManagementVersion,
 
       "com.typesafe.akka" %% "akka-slf4j"       %   akkaVersion,
       "ch.qos.logback"    %  "logback-classic"  %   "1.2.3",

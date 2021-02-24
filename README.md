@@ -42,12 +42,9 @@ CREATE TABLE msg.msg_journal (
     writer_uuid text,
     PRIMARY KEY ((persistence_id, partition_nr), sequence_nr, timestamp)
 ) WITH CLUSTERING ORDER BY (sequence_nr ASC, timestamp ASC)
-  
-CREATE TABLE msg.metadata (
-    persistence_id text PRIMARY KEY,
-    deleted_to bigint,
-    properties map<text, text>
-)
+
+
+select name, owner from leases where name = 'dsim-akka-sbr';
 
 ```
 
@@ -87,6 +84,21 @@ https://discuss.lightbend.com/t/work-pulling-unexpected-requestnext-messages/755
 https://github.com/akka/akka/issues/29854
 
 
+### Akka Cluster lease using LWT transactions in Cassandra
+
+https://blog.softwaremill.com/akka-cluster-split-brain-failures-are-you-ready-for-it-d9406b97e099
+https://doc.akka.io/docs/akka-management/current/kubernetes-lease.html
+https://blog.softwaremill.com/a-case-for-akka-coordination-lease-4867887e4d7f
+https://www.datastax.com/blog/consensus-cassandra
+
+
+### Why lease-majority
+
+Comparing to other strategies where it's possible to end up with no cluster at all (when ...),
+it isn't impossible with lease-majority because ... 
+
+
+
 ### Links
 
 https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
@@ -104,5 +116,3 @@ https://github.com/akka/akka-samples/blob/2.6/akka-sample-distributed-workers-sc
 https://www.lightbend.com/blog/how-to-distribute-application-state-with-akka-cluster-part-4-the-source-code
 https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
 
-
-Flush processed batch [1226,1229,1230,1232,1233,1234]

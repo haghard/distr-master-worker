@@ -66,13 +66,13 @@ final class DataSerializer(system: ExtendedActorSystem)
         msg.getMessage.getSerializedSize
          */
 
-        system.log.warning(
+        /*system.log.warning(
           "toBinary: SequencedMessage:{} Sizes:[{}:{}] IsDirect:{}",
           msg.getMessage.getMessageManifest.toStringUtf8,
           msg.getSerializedSize,
           msg.getMessage.getSerializedSize,
           directByteBuffer.isDirect
-        )
+        )*/
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(msg.writeTo(_))
       case m: ProducerControllerImpl.Ack ⇒
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(ackToBinary(m).writeTo(_))
@@ -114,17 +114,17 @@ final class DataSerializer(system: ExtendedActorSystem)
       Worker.WorkerJob(pb.seqNum, pb.desc.toByteArray)
     } else if (manifest == "a" /*super.SequencedMessageManifest*/ ) {
       val m = sequencedMessageFromBinary[Worker.WorkerJob](byteBuffer)
-      system.log.warning(
+      /*system.log.warning(
         "fromBinary: SequencedMessage Payload-size: {}. IsDirect:{}",
         m.message.asInstanceOf[Worker.WorkerJob].jobDesc.size,
         byteBuffer.isDirect
-      )
+      )*/
       m
     } else if (manifest == "h") { //super.DurableQueueStateManifest = "h"
       val m = durableQueueStateFromBinary[Worker.WorkerJob](byteBuffer)
-      system.log.warning(
+      /*system.log.warning(
         s"fromBinary: State [${m.currentSeqNr}:${m.highestConfirmedSeqNr}] Unconfirmed [${m.unconfirmed.map(_.seqNr).mkString(",")}]"
-      )
+      )*/
       m
     } else {
       //allocate extra array

@@ -42,7 +42,7 @@ object Worker {
         config.getBoolean("only-flow-control")
       )*/
 
-      val flushPeriod = 3.second
+      val flushPeriod = 10.second
 
       ctx.log.warn("★ ★ ★ ★   Worker {} ★ ★ ★ ★", address)
 

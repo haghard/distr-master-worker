@@ -97,7 +97,7 @@ object Runner extends App {
     )
 
   def startup(port: Int): Unit =
-    if (port == 2553) {
+    if (port == 2554) {
       startCassandraDatabase()
       sys.addShutdownHook(CassandraLauncher.stop())
       println("Started Cassandra, press Ctrl + C to kill")
