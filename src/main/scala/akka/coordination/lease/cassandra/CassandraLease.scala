@@ -12,30 +12,14 @@ import com.dsim.CassandraSessionExtension
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.compat.java8.FutureConverters.CompletionStageOps
 import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
 import scala.util.control.NonFatal
 
 object CassandraLease {
+  //leaseName = dsim-akka-sbr
   val configPath = "akka.coordination.lease.cassandra"
 }
 
-//select name, owner from leases where name = 'dsim-akka-sbr';
-//see KubernetesLease
-
-/** A lease can be used for:
-  *
-  * Split Brain Resolver. An additional safety measure so that only one SBR instance can make the decision to remain up.
-  * Cluster Singleton. A singleton manager can be configured to acquire a lease before creating the singleton.
-  * Cluster Sharding. Each Shard can be configured to acquire a lease before creating entity actors.
-  * In all cases the use of the lease increases the consistency of the feature. However, as the Kubernetes API server and its backing etcd cluster can also be subject to failure and network issues any use of this lease can reduce availability.
-  *
-  * Lease Instances
-  *  With Split Brain Resolver there will be one lease per Akka Cluster
-  *  With multiple Akka Clusters using SBRs in the same namespace, e.g. multiple Lagom applications, you must ensure different ActorSystem names because they all need a separate lease.
-  *  With Cluster Sharding and Cluster Singleton there will be more leases
-  *  For Cluster Singleton there will be one per singleton.
-  *  For Cluster Sharding, there will be one per shard per type.
-  */
+//see akka.coordination.lease.kubernetes.KubernetesLease
 final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolean, settings: LeaseSettings)
     extends Lease(settings) {
 
@@ -43,10 +27,6 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
     this(system, new AtomicBoolean(false), leaseSettings)
 
   system.log.warning(s"★ ★ ★ ★ CassandraLease: $settings ★ ★ ★ ★")
-
-  //dsim-akka-sbr
-  //implicit val timeout = Timeout(settings.timeoutSettings.operationTimeout)
-  val to = 3.seconds
 
   val cassandraSession = CassandraSessionExtension(system.classicSystem).session
 
@@ -112,17 +92,4 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
           system.log.error(ex, "CassandraLease. Acquire error")
           Future.successful(false)
       }
-
-  /*override def acquire(leaseLostCallback: Option[Throwable] ⇒ Unit): Future[Boolean] =
-    cqlSession
-      .flatMap { cqlSession ⇒
-        system.log.warning("★ ★ ★ ★ CassandraLease:acquire {} by {} ★ ★ ★ ★", settings.leaseName, settings.ownerName)
-        cqlSession.executeAsync(insert).toScala.flatMap { rs ⇒
-          if (rs.wasApplied()) Future.successful(true)
-          else akka.pattern.after(to, system.scheduler)(acquire(leaseLostCallback))
-        }
-      }
-      .recoverWith { case NonFatal(_) ⇒
-        akka.pattern.after(to, system.scheduler)(acquire(leaseLostCallback))
-      }*/
 }
