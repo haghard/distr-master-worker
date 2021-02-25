@@ -89,13 +89,16 @@ https://github.com/akka/akka/issues/29854
 https://blog.softwaremill.com/akka-cluster-split-brain-failures-are-you-ready-for-it-d9406b97e099
 https://doc.akka.io/docs/akka-management/current/kubernetes-lease.html
 https://blog.softwaremill.com/a-case-for-akka-coordination-lease-4867887e4d7f
-https://www.datastax.com/blog/consensus-cassandra
+
+Consensus on Cassandra https://www.datastax.com/blog/consensus-cassandra
 
 
-### Why lease-majority
+### Why SBR lease-majority strategy
+ 
 
-Comparing to other strategies where it's possible to end up with no cluster at all (when ...),
-it isn't impossible with lease-majority because ... 
+Comparing to other SBR strategies like `keep-majority` where it's possible to end up with no cluster at all (imagine [a,b] and [c,d,e] were separated and [c,d,e] were terminated. Now, [a,b] - the minority, therefore they have to terminate themselves),
+with `lease-majority` the survived partition [a,b] will always be able to grab a lock even if it's a minority. Looks like `lease-majority` is more safe to use.
+
 
 
 
