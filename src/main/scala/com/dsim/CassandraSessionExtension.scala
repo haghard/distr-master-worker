@@ -48,7 +48,7 @@ class CassandraSessionExtension(system: ActorSystem) extends Extension {
   private def createTables(cassandraSession: CassandraSession) = {
     val ttl = system.settings.config.getDuration("akka.cluster.split-brain-resolver.stable-after").getSeconds * 3
     val createStatement =
-      s"CREATE TABLE IF NOT EXISTS msg.leases (name text PRIMARY KEY, owner text) with default_time_to_live = $ttl"
+      s"CREATE TABLE IF NOT EXISTS $keyspace.leases (name text PRIMARY KEY, owner text) with default_time_to_live = $ttl"
 
     cassandraSession
       .executeDDL(createStatement)
