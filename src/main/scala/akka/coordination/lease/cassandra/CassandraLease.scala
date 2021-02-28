@@ -20,6 +20,9 @@ object CassandraLease {
 }
 
 //see akka.coordination.lease.kubernetes.KubernetesLease
+/**  CREATE TABLE IF NOT EXISTS msg.leases (name text PRIMARY KEY, owner text) with default_time_to_live = ttl
+  *  where ttl == akka.cluster.split-brain-resolver.stable-after * 2.5
+  */
 final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolean, settings: LeaseSettings)
     extends Lease(settings) {
 
@@ -36,16 +39,18 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
   //https://github.com/haghard/linguistic/blob/1b6bc8af7674982537cf574d3929cea203a2b6fa/server/src/main/scala/linguistic/dao/Accounts.scala
   //https://github.com/dekses/cassandra-lock/blob/master/src/main/java/com/dekses/cassandra/lock/LockFactory.java
 
+  val ksName = system.settings.config.getString("akka.persistence.cassandra.journal.keyspace")
+
   val select = SimpleStatement
-    .builder("SELECT owner FROM msg.leases WHERE name = ?")
+    .builder(s"SELECT owner FROM ${ksName}.leases WHERE name = ?")
     .addPositionalValues(settings.leaseName)
-    .setConsistencyLevel(ConsistencyLevel.SERIAL)
+    .setConsistencyLevel(ConsistencyLevel.QUORUM)
     .setSerialConsistencyLevel(ConsistencyLevel.SERIAL)
     .setTracing()
     .build()
 
   val insert = SimpleStatement
-    .builder("INSERT INTO msg.leases (name, owner) VALUES (?,?) IF NOT EXISTS")
+    .builder(s"INSERT INTO ${ksName}.leases (name, owner) VALUES (?,?) IF NOT EXISTS")
     .addPositionalValues(settings.leaseName, settings.ownerName)
     .setConsistencyLevel(ConsistencyLevel.QUORUM)
     .setSerialConsistencyLevel(ConsistencyLevel.SERIAL)
@@ -53,7 +58,7 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
     .build()
 
   val delete = SimpleStatement
-    .builder("DELETE FROM msg.leases WHERE name = ? IF owner = ?")
+    .builder(s"DELETE FROM ${ksName}.leases WHERE name = ? IF owner = ?")
     .addPositionalValues(settings.leaseName, settings.ownerName)
     .setConsistencyLevel(ConsistencyLevel.QUORUM)
     .setSerialConsistencyLevel(ConsistencyLevel.SERIAL)

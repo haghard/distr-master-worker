@@ -20,7 +20,7 @@ import scala.util.Using
   * which allows the ByteBufferSerializer to directly write into and read from a shared java.nio.ByteBuffer
   * instead of being forced to allocate and return an Array[Byte] for each serialized message.
   */
-final class DataSerializer(system: ExtendedActorSystem)
+final class ReliableDeliverySerializer2(system: ExtendedActorSystem)
     extends akka.cluster.typed.internal.delivery.ReliableDeliverySerializer(system)
     with SerializationSupport
     with ByteBufferSerializer
