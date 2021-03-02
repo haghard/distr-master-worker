@@ -43,7 +43,7 @@ val `distr-master-worker` = project
       "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % cassandraPluginVersion,
 
       "com.typesafe.akka" %% "akka-coordination" % akkaVersion,
-      "com.lightbend.akka.management" %% "akka-lease-kubernetes" % AkkaManagementVersion,
+      //"com.lightbend.akka.management" %% "akka-lease-kubernetes" % AkkaManagementVersion,
 
 
       //"org.iq80.leveldb"            % "leveldb"          % "0.7",
