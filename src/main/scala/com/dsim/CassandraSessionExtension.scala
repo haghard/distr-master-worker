@@ -1,13 +1,11 @@
 package com.dsim
 
 import akka.actor.{ActorSystem, ClassicActorSystemProvider, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
-import akka.event.Logging
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.query.PersistenceQuery
 import akka.stream.alpakka.cassandra.scaladsl.CassandraSession
 
 import scala.concurrent.duration._
-import scala.util.control.NonFatal
 
 object CassandraSessionExtension extends ExtensionId[CassandraSessionExtension] with ExtensionIdProvider {
 
@@ -22,7 +20,33 @@ object CassandraSessionExtension extends ExtensionId[CassandraSessionExtension] 
 }
 
 class CassandraSessionExtension(system: ActorSystem) extends Extension {
+  val retryTimeout = 2.second
 
+  lazy val keyspace = system.settings.config.getString("akka.persistence.cassandra.journal.keyspace")
+
+  implicit val ec = system.dispatchers.lookup(???)
+
+  lazy val session: CassandraSession = {
+
+    val cassandraSession = PersistenceQuery(system)
+      .readJournalFor[CassandraReadJournal](CassandraReadJournal.Identifier)
+      .session
+
+    //TODO: avoid blocking, although blocking is fine during startup
+    scala.concurrent.Await.result(
+      akka.pattern.retry(() ⇒ createLeaseTable(cassandraSession), 10)(ec),
+      Duration.Inf
+    )
+    cassandraSession
+  }
+
+  private def createLeaseTable(cassandraSession: CassandraSession) = {
+    val stmt = s"CREATE TABLE IF NOT EXISTS $keyspace.leases (name text PRIMARY KEY, owner text)"
+    cassandraSession executeDDL stmt
+  }
+}
+
+/*
   val retryTimeout = 3.second
   val logger       = Logging(system, getClass)
 
@@ -54,4 +78,4 @@ class CassandraSessionExtension(system: ActorSystem) extends Extension {
       .executeDDL(createStatement)
     //.flatMap(_ ⇒ cassandraSession.executeDDL(createFeedbackStatement))
   }
-}
+ */

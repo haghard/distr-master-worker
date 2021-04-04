@@ -7,6 +7,7 @@ val AkkaManagementVersion  = "1.0.9"
 
 lazy val scalacSettings = Seq(
   scalacOptions ++= Seq(
+    "-target:jvm-14",
     //"-deprecation",             // Emit warning and location for usages of deprecated APIs.
     "-unchecked",               // Enable additional warnings where generated code depends on assumptions.
     "-encoding", "UTF-8",       // Specify character encoding used by source files.

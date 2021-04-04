@@ -7,8 +7,8 @@ import akka.actor.typed.{Behavior, PostStop, Terminated}
 import akka.cluster.typed.{ClusterSingleton, SelfUp, SingletonActor, Unsubscribe}
 import akka.management.cluster.scaladsl.ClusterHttpManagementRoutes
 import akka.persistence.cassandra.testkit.CassandraLauncher
-import com.dsim.http.ServerBootstrap
-import com.dsim.http.ServerBootstrap.CriticalError
+import com.dsim.http.Bootstrap
+import com.dsim.http.Bootstrap.CriticalError
 import com.dsim.rdelivery.Master
 import com.typesafe.config.ConfigFactory
 
@@ -61,7 +61,7 @@ object Runner extends App {
           // {"flow-control-window":50,"only-flow-control":false,"resend-interval-max":"30s","resend-interval-min":"2s"}))
           ctx.system.settings.config.getConfig("akka.reliable-delivery.consumer-controller")
 
-          ServerBootstrap(ClusterHttpManagementRoutes(akka.cluster.Cluster(sys)), hostName, port + 100)
+          Bootstrap(ClusterHttpManagementRoutes(akka.cluster.Cluster(sys)), hostName, port + 100)
 
           /*val askTo = 2.seconds
           ServerBootstrap(Api(master.narrow[Master.HttpReq], askTo), hostName, port + 100, askTo.+(1.second))(
@@ -113,7 +113,7 @@ object Runner extends App {
 
       val memorySize = ManagementFactory.getOperatingSystemMXBean
         .asInstanceOf[com.sun.management.OperatingSystemMXBean]
-        .getTotalPhysicalMemorySize
+        .getTotalMemorySize
       val runtimeInfo = new StringBuilder()
         .append('\n')
         .append("★ ★ ★ ★ ★ ★ ★ ★ ★")

@@ -12,7 +12,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-object ServerBootstrap {
+object Bootstrap {
 
   case object CriticalError                 extends Reason
   private case object HttpServerBindFailure extends Reason
@@ -20,7 +20,7 @@ object ServerBootstrap {
   private val terminationDeadline = 5.seconds
 }
 
-final case class ServerBootstrap(routes: Route, host: String, httpPort: Int)(implicit
+final case class Bootstrap(routes: Route, host: String, httpPort: Int)(implicit
   system: ActorSystem[Nothing]
 ) {
   //implicit val b = system.toClassic
@@ -33,7 +33,7 @@ final case class ServerBootstrap(routes: Route, host: String, httpPort: Int)(imp
     .onComplete {
       case Failure(ex) ⇒
         system.log.error(s"Shutting down because can't bind on $host:$httpPort", ex)
-        cShutdown.run(ServerBootstrap.HttpServerBindFailure)
+        cShutdown.run(Bootstrap.HttpServerBindFailure)
       case Success(binding) ⇒
         system.log.info(s"Started http server on $host:$httpPort")
         cShutdown.addTask(PhaseBeforeServiceUnbind, "before-unbind") { () ⇒
@@ -57,7 +57,7 @@ final case class ServerBootstrap(routes: Route, host: String, httpPort: Int)(imp
             * Until the `terminationDeadline` all the req that have been accepted will be completed
             * and only than the shutdown will continue
             */
-          binding.terminate(ServerBootstrap.terminationDeadline).map { _ ⇒
+          binding.terminate(Bootstrap.terminationDeadline).map { _ ⇒
             system.log.info("CoordinatedShutdown [http-api.terminate]")
             Done
           }

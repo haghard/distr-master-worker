@@ -3,13 +3,10 @@ package com.dsim.rdelivery
 import akka.actor.typed.Behavior
 import akka.actor.typed.delivery.WorkPullingProducerController
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer}
-import akka.cluster.typed.Cluster
 import akka.coordination.lease.scaladsl.{Lease, LeaseProvider}
 import akka.persistence.typed.PersistenceId
-import akka.util.Timeout
 
 import java.util.concurrent.ThreadLocalRandom
-import scala.concurrent.duration.DurationInt
 
 //producer talks to ProducerController
 
@@ -35,10 +32,10 @@ object Master {
   final case class JobDescription(jobDesc: String) extends Command
   private final case class ReqNextWrapper(rn: WorkPullingProducerController.RequestNext[Worker.WorkerJob])
       extends Command
-  private final case class AskReply(seqNum: Long, timeout: Boolean) extends Command
 
-  private final case class Acquire(b: Boolean) extends Command
-  object AcquireTick                           extends Command
+  private final case class AskReply(seqNum: Long, timeout: Boolean) extends Command
+  private final case class Acquire(b: Boolean)                      extends Command
+  object AcquireTick                                                extends Command
 
   //case object ShutDown extends Command
 
@@ -138,7 +135,7 @@ object Master {
     seqNum: Long,
     next: WorkPullingProducerController.RequestNext[Worker.WorkerJob]
   )(implicit ctx: ActorContext[Master.Command], buf: StashBuffer[Master.Command]): Behavior[Command] =
-    Behaviors.receiveMessage {
+    Behaviors.receiveMessagePartial {
       case Master.JobDescription(desc @ _) ⇒
         val b = new Array[Byte](1024 * 1)
         ThreadLocalRandom.current().nextBytes(b)
