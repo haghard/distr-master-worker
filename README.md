@@ -1,4 +1,5 @@
-### To run locally from sbt
+### 
+
 
 ```bash
 
@@ -25,9 +26,7 @@ drop keyspace msg;
 
 select persistence_id, sequence_nr, timestamp, timebucket, ser_id, ser_manifest, writer_uuid from msg.msg_journal where persistence_id = 'messages' and partition_nr = 0;
 
-
 select persistence_id, partition_nr, sequence_nr from msg.msg_journal where persistence_id = 'messages' and partition_nr = 8;
-
 
 select persistence_id, partition_nr, sequence_nr from msg.msg_journal where persistence_id = 'messages' ALLOW FILTERING;
 
@@ -50,9 +49,35 @@ CREATE TABLE msg.msg_journal (
 ) WITH CLUSTERING ORDER BY (sequence_nr ASC, timestamp ASC)
 
 
+
 select name, owner from leases where name = 'dsim-akka-sbr';
 
 ```
+
+
+### Main links
+
+https://github.com/akka/akka/pull/28155
+https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#sharding
+https://github.com/akka/akka-samples/tree/05703965e15cab5efbb66718a6e23ef42de05ff0/akka-sample-distributed-workers-scala
+
+
+### Other links
+
+https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
+
+https://discuss.lightbend.com/t/how-to-avoid-nodes-to-be-quarantined-in-akka-cluster/1932
+https://manuel.bernhardt.io/2017/06/08/akka-anti-patterns-using-remoting/
+https://doc.akka.io/docs/akka/snapshot/remoting.html?language=scala#types-of-remote-interaction
+
+https://doc.akka.io/docs/akka/current/coordinated-shutdown.html
+https://doc.akka.io/docs/akka/current/remoting-artery.html#quarantine
+
+https://github.com/akka/akka-samples/tree/2.6/akka-sample-distributed-workers-scala
+https://github.com/akka/akka-samples/blob/2.6/akka-sample-distributed-workers-scala/src/main/scala/worker/WorkManager.scala
+
+https://www.lightbend.com/blog/how-to-distribute-application-state-with-akka-cluster-part-4-the-source-code
+https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
 
 
 ### Notes
@@ -80,50 +105,22 @@ curl -w '\n' -X PUT -H 'Content-Type: multipart/form-data' -F operation=leave ht
 curl -w '\n' -X PUT -H 'Content-Type: multipart/form-data' -F operation=down http://localhost:2651/cluster/members/dsim@127.0.0.1:2552
 
 
-### Event-driven Finite State Machines
-https://christopherhunt-software.blogspot.com/2021/02/event-driven-finite-state-machines.html?spref=tw
 
 
-## Potential bugs 
+### Akka-persistence-postgres
 
-https://discuss.lightbend.com/t/work-pulling-unexpected-requestnext-messages/7552/2
-https://github.com/akka/akka/issues/29854
+https://medium.com/swissborg-engineering/leveraging-aws-aurora-for-event-sourcing-e8323dce58b6
+https://aws.amazon.com/rds/aurora/postgresql-features/
 
+https://github.com/SwissBorg/akka-persistence-postgres
 
-### CQL Data Modeler
-
-https://www.sestevez.com/sestevez/CassandraDataModeler/
-
-
-### Akka Cluster lease using LWT transactions in Cassandra
-
-https://blog.softwaremill.com/akka-cluster-split-brain-failures-are-you-ready-for-it-d9406b97e099
-https://doc.akka.io/docs/akka-management/current/kubernetes-lease.html
-https://blog.softwaremill.com/a-case-for-akka-coordination-lease-4867887e4d7f
-
-Consensus on Cassandra https://www.datastax.com/blog/consensus-cassandra
+"com.swissborg" %% "akka-persistence-postgres" % "0.5.0-M7"
 
 
-### Why SBR lease-majority strategy
+### How to run
 
-Comparing to other SBR strategies like `keep-majority` which is the most popular strategy for dynamic clusters, it's possible to end up with no cluster at all (imagine [a,b] and [c,d,e] were separated and [c,d,e] were terminated. Now, [a,b] - the minority, therefore they have to terminate themselves),
-with `lease-majority` the survived partition [a,b] will always be able to grab a lock even if it's a minority. Looks like `lease-majority` is more safe to use.
+runMain com.dsim.Runner 2554 (cassandra)
+runMain com.dsim.Runner 2551
+runMain com.dsim.Runner 2552
 
-
-### Links
-
-https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
-
-https://discuss.lightbend.com/t/how-to-avoid-nodes-to-be-quarantined-in-akka-cluster/1932
-https://manuel.bernhardt.io/2017/06/08/akka-anti-patterns-using-remoting/
-https://doc.akka.io/docs/akka/snapshot/remoting.html?language=scala#types-of-remote-interaction
-
-https://doc.akka.io/docs/akka/current/coordinated-shutdown.html
-https://doc.akka.io/docs/akka/current/remoting-artery.html#quarantine
-
-https://github.com/akka/akka-samples/tree/2.6/akka-sample-distributed-workers-scala
-https://github.com/akka/akka-samples/blob/2.6/akka-sample-distributed-workers-scala/src/main/scala/worker/WorkManager.scala
-
-https://www.lightbend.com/blog/how-to-distribute-application-state-with-akka-cluster-part-4-the-source-code
-https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#work-pulling
-
+select persistence_id, sequence_nr, timestamp, timebucket, ser_id, ser_manifest, writer_uuid from msg.msg_journal where persistence_id = 'tasks' and partition_nr = 0;

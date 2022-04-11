@@ -24,7 +24,7 @@ class CassandraSessionExtension(system: ActorSystem) extends Extension {
 
   lazy val keyspace = system.settings.config.getString("akka.persistence.cassandra.journal.keyspace")
 
-  implicit val ec = system.dispatchers.lookup(???)
+  implicit val ec = system.dispatchers.lookup("")
 
   lazy val session: CassandraSession = {
 
@@ -32,7 +32,7 @@ class CassandraSessionExtension(system: ActorSystem) extends Extension {
       .readJournalFor[CassandraReadJournal](CassandraReadJournal.Identifier)
       .session
 
-    //TODO: avoid blocking, although blocking is fine during startup
+    // TODO: avoid blocking, although blocking is fine during startup
     scala.concurrent.Await.result(
       akka.pattern.retry(() ⇒ createLeaseTable(cassandraSession), 10)(ec),
       Duration.Inf

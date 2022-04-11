@@ -1,3 +1,4 @@
+/*
 package akka
 
 import akka.actor.ExtendedActorSystem
@@ -14,19 +15,21 @@ import java.nio.ByteBuffer
 import scala.util.Using
 
 /** https://doc.akka.io/docs/akka/current/remoting-artery.html#bytebuffer-based-serialization
-  *
-  * Artery introduced a new serialization mechanism.
-  * This implementation takes advantage of new Artery serialization mechanism
-  * which allows the ByteBufferSerializer to directly write into and read from a shared java.nio.ByteBuffer
-  * instead of being forced to allocate and return an Array[Byte] for each serialized message.
-  */
+ *
+ * Artery introduced a new serialization mechanism. This implementation takes advantage of new Artery serialization
+ * mechanism which allows the ByteBufferSerializer to directly write into and read from a shared java.nio.ByteBuffer
+ * instead of being forced to allocate and return an Array[Byte] for each serialized message.
+ */
 final class ReliableDeliverySerializer2(system: ExtendedActorSystem)
     extends akka.cluster.typed.internal.delivery.ReliableDeliverySerializer(system)
     with SerializationSupport
     with ByteBufferSerializer
     with ProtocSupport {
 
-  //override val identifier: Int = super.identifier 36
+  private val SequencedMessageManifest  = "a"
+  private val DurableQueueStateManifest = "h"
+
+  // override val identifier: Int = super.identifier 36
 
   override def manifest(obj: AnyRef): String =
     obj match {
@@ -37,13 +40,26 @@ final class ReliableDeliverySerializer2(system: ExtendedActorSystem)
 
   override def toBinary(o: AnyRef): Array[Byte] =
     o match {
-      case Master.JobDescription(desc) ⇒ JobDescriptionPB(desc).toByteArray
-      case job: Worker.WorkerJob ⇒
-        WorkerJobPB(
-          job.seqNum,
-          com.google.protobuf.ByteString.readFrom(new ByteArrayInputStream(job.jobDesc))
-        ).toByteArray
-      case other ⇒ super.toBinary(other)
+      case mCmd: Master.Command ⇒
+        mCmd match {
+          case Master.JobDescription(jobDesc) ⇒
+            JobDescriptionPB(jobDesc).toByteArray
+          // case Master.AcquireTick ⇒ throw new IllegalArgumentException("Cannot serialize object of type Master.AcquireTick")
+        }
+
+      case wCmd: Worker.Command ⇒
+        wCmd match {
+          case Worker.WorkerJob(seqNum, jobDesc) ⇒
+            WorkerJobPB(
+              seqNum,
+              com.google.protobuf.ByteString.readFrom(new ByteArrayInputStream(jobDesc))
+            ).toByteArray
+          case Worker.Flush ⇒
+            throw new IllegalArgumentException("Cannot serialize object of type Worker.Flush")
+        }
+
+      case other ⇒
+        super.toBinary(other)
     }
 
   override def toBinary(o: AnyRef, directByteBuffer: ByteBuffer): Unit =
@@ -51,7 +67,7 @@ final class ReliableDeliverySerializer2(system: ExtendedActorSystem)
       case Master.JobDescription(desc) ⇒
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(JobDescriptionPB(desc).writeTo(_))
       case job: Worker.WorkerJob ⇒
-        //com.google.protobuf.ByteString.copyFrom(???)
+        // com.google.protobuf.ByteString.copyFrom(???)
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(
           WorkerJobPB(job.seqNum, com.google.protobuf.ByteString.readFrom(new ByteArrayInputStream(job.jobDesc)))
             .writeTo(_)
@@ -59,20 +75,6 @@ final class ReliableDeliverySerializer2(system: ExtendedActorSystem)
       // from akka.cluster.typed.internal.delivery.ReliableDeliverySerializer
       case m: ConsumerController.SequencedMessage[_] ⇒
         val msg = sequencedMessageToBinary(m)
-        /*
-        msg.getProducerId
-        msg.getSeqNr
-        msg.getMessage.getMessageManifest.toStringUtf8
-        msg.getMessage.getSerializedSize
-         */
-
-        /*system.log.warning(
-          "toBinary: SequencedMessage:{} Sizes:[{}:{}] IsDirect:{}",
-          msg.getMessage.getMessageManifest.toStringUtf8,
-          msg.getSerializedSize,
-          msg.getMessage.getSerializedSize,
-          directByteBuffer.isDirect
-        )*/
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(msg.writeTo(_))
       case m: ProducerControllerImpl.Ack ⇒
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(ackToBinary(m).writeTo(_))
@@ -82,7 +84,7 @@ final class ReliableDeliverySerializer2(system: ExtendedActorSystem)
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(resendToBinary(m).writeTo(_))
       case m: ProducerController.RegisterConsumer[_] ⇒
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(registerConsumerToBinary(m).writeTo(_))
-      //akka.cluster.typed.internal.delivery.ReliableDeliverySerializer
+      // akka.cluster.typed.internal.delivery.ReliableDeliverySerializer
       case m: DurableProducerQueue.MessageSent[_] ⇒
         system.log.warning("MessageSent. Confirmed:[{}:{}]", m.seqNr, m.confirmationQualifier)
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(durableQueueMessageSentToProto(m).writeTo(_))
@@ -96,18 +98,50 @@ final class ReliableDeliverySerializer2(system: ExtendedActorSystem)
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(durableQueueStateToBinary(m).writeTo(_))
       case m: DurableProducerQueue.Cleanup ⇒
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(durableQueueCleanupToBinary(m).writeTo(_))
-      /*case _ ⇒
-        goes with extra array allocation
+      case _ ⇒
+        // goes with extra array allocation
         val bytes = super.toBinary(o)
         Using.resource(new ByteBufferOutputStream(directByteBuffer))(_.write(bytes))
-       */
     }
 
-  // byteBuffer -> obj
   override def fromBinary(byteBuffer: ByteBuffer, manifest: String): AnyRef =
+    manifest match {
+      case SequencedMessageManifest ⇒
+        val m: ConsumerController.SequencedMessage[Worker.WorkerJob] =
+          sequencedMessageFromBinary[Worker.WorkerJob](byteBuffer)
+
+        system.log.warning(s"fromBinary: SequencedMessage.WorkerJob [${m.seqNr}: ${m.ack}: ${byteBuffer.isDirect}]")
+        m
+      case DurableQueueStateManifest ⇒
+        val m: DurableProducerQueue.State[Worker.WorkerJob] =
+          durableQueueStateFromBinary[Worker.WorkerJob](byteBuffer)
+        system.log.warning(
+          s"fromBinary: State [${m.currentSeqNr}:${m.highestConfirmedSeqNr}] Unconfirmed [${m.unconfirmed.map(_.seqNr).mkString(",")}]"
+        )
+        m
+      case other ⇒
+        system.log.warning("fromBinary: [{}] ", manifest)
+
+        if (other == classOf[Master.JobDescription].getName) {
+          val pb = JobDescriptionPB.parseFrom(new ByteBufferInputStream(byteBuffer))
+          //
+          // val pb0 = JobDescriptionPB.parseFrom(com.google.protobuf.CodedInputStream.newInstance(byteBuffer))
+          Master.JobDescription(pb.desc)
+        } else if (other == classOf[Worker.WorkerJob].getName) {
+          val pb = WorkerJobPB.parseFrom(new ByteBufferInputStream(byteBuffer))
+          Worker.WorkerJob(pb.seqNum, pb.desc.toByteArray)
+        } else {
+          // allocate extra array
+          val bytes = new Array[Byte](byteBuffer.remaining)
+          byteBuffer.get(bytes)
+          super.fromBinary(bytes, manifest)
+        }
+    }
+
+  /*
     if (manifest == classOf[Master.JobDescription].getName) {
       val pb = JobDescriptionPB.parseFrom(new ByteBufferInputStream(byteBuffer))
-      //val pb = JobDescriptionPB.parseFrom(com.google.protobuf.CodedInputStream.newInstance(directByteBuffer))
+      // val pb = JobDescriptionPB.parseFrom(com.google.protobuf.CodedInputStream.newInstance(directByteBuffer))
       Master.JobDescription(pb.desc)
     } else if (manifest == classOf[Worker.WorkerJob].getName) {
       val pb = WorkerJobPB.parseFrom(new ByteBufferInputStream(byteBuffer))
@@ -120,18 +154,18 @@ final class ReliableDeliverySerializer2(system: ExtendedActorSystem)
         byteBuffer.isDirect
       )*/
       m
-    } else if (manifest == "h") { //super.DurableQueueStateManifest = "h"
+    } else if (manifest == "h") { // super.DurableQueueStateManifest = "h"
       val m = durableQueueStateFromBinary[Worker.WorkerJob](byteBuffer)
       /*system.log.warning(
         s"fromBinary: State [${m.currentSeqNr}:${m.highestConfirmedSeqNr}] Unconfirmed [${m.unconfirmed.map(_.seqNr).mkString(",")}]"
       )*/
       m
     } else {
-      //allocate extra array
+      // allocate extra array
       val bytes = new Array[Byte](byteBuffer.remaining)
       byteBuffer.get(bytes)
       super.fromBinary(bytes, manifest)
-    }
+    }*/
 
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef =
     fromBinary(ByteBuffer.wrap(bytes), manifest)
@@ -157,6 +191,7 @@ final class ReliableDeliverySerializer2(system: ExtendedActorSystem)
         throw new IllegalArgumentException(s"Can't deserialize bytes§ in [${this.getClass.getName}]", other)
     } finally bufferPool.release(directByteBuffer)
   }
-   */
+ */
 
 }
+ */

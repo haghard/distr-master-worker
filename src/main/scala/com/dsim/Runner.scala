@@ -19,8 +19,10 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.io.StdIn
 
-/** runMain com.dsim.Runner 2553  //cassandra
+/** runMain com.dsim.Runner 2554 (cassandra)
+  *
   * runMain com.dsim.Runner 2551
+  *
   * runMain com.dsim.Runner 2552
   */
 object Runner extends App {
@@ -37,7 +39,8 @@ object Runner extends App {
         cluster.subscriptions ! akka.cluster.typed.Subscribe(ctx.self, classOf[SelfUp])
 
         Behaviors.receive[SelfUp] { case (ctx, _ @SelfUp(_ /*state*/ )) ⇒
-          //val upMemebers = state.members.filter(_.status == akka.cluster.MemberStatus.Up).map(_.address)
+          // val upMemebers = state.members.filter(_.status == akka.cluster.MemberStatus.Up).map(_.address)
+
           cluster.subscriptions ! Unsubscribe(ctx.self)
 
           ctx.spawn(ClusterListenerActor(cluster), "listener")
@@ -45,12 +48,12 @@ object Runner extends App {
           val mb = Behaviors
             .supervise(rdelivery.Master())
             .onFailure[Exception](akka.actor.typed.SupervisorStrategy.resume.withLoggingEnabled(true))
-          //SupervisorStrategy.restartWithBackoff(minBackoff = 1.second, maxBackoff = 30.seconds, randomFactor = 0.1)
+          // SupervisorStrategy.restartWithBackoff(minBackoff = 1.second, maxBackoff = 30.seconds, randomFactor = 0.1)
 
-          val master = ClusterSingleton(ctx.system).init(SingletonActor(mb, "master"))
-          //.withStopMessage(rdelivery.Master.ShutDown))
+          val master =
+            ClusterSingleton(ctx.system).init(SingletonActor(mb, "master").withStopMessage(rdelivery.Master.ShutDown))
 
-          //Default {"flow-control-window":50,"only-flow-control":false,"resend-interval-max":"30s","resend-interval-min":"2s"}
+          // Default {"flow-control-window":50,"only-flow-control":false,"resend-interval-max":"30s","resend-interval-min":"2s"}
           val worker = ctx.spawn(rdelivery.Worker(cluster.selfMember.uniqueAddress.address), "worker")
           ctx.watch(worker)
 
@@ -62,11 +65,6 @@ object Runner extends App {
           ctx.system.settings.config.getConfig("akka.reliable-delivery.consumer-controller")
 
           Bootstrap(ClusterHttpManagementRoutes(akka.cluster.Cluster(sys)), hostName, port + 100)
-
-          /*val askTo = 2.seconds
-          ServerBootstrap(Api(master.narrow[Master.HttpReq], askTo), hostName, port + 100, askTo.+(1.second))(
-            sys.toClassic
-          )*/
 
           ctx.system.scheduler.scheduleWithFixedDelay(3.seconds, 900.millis) { () ⇒
             master.tell(Master.JobDescription(System.currentTimeMillis.toString))
@@ -90,7 +88,7 @@ object Runner extends App {
 
   def startCassandraDatabase(): Unit =
     CassandraLauncher.start(
-      new File("target/cassandra-db"),
+      new File("./cassandra-db"),
       CassandraLauncher.DefaultTestConfigResource,
       clean = false,
       port = 9042
@@ -135,7 +133,7 @@ object Runner extends App {
 
       val _ = StdIn.readLine()
       system.log.warn("Shutting down ...")
-      system.terminate() //triggers CoordinatedShutdown
+      system.terminate() // triggers CoordinatedShutdown
       val _ = Await.result(
         system.whenTerminated,
         sysCfg.getDuration("akka.coordinated-shutdown.default-phase-timeout", TimeUnit.SECONDS).seconds

@@ -18,7 +18,8 @@ import scala.util.control.NonFatal
 import CassandraLease._
 import com.dsim.CassandraSessionExtension
 
-/** This implementation can be used for either `akka.sharding.use-lease` or `split-brain-resolver.active-strategy = lease-majority`.
+/** This implementation can be used for either `akka.sharding.use-lease` or `split-brain-resolver.active-strategy =
+  * lease-majority`.
   *
   * https://github.com/haghard/linguistic/blob/1b6bc8af7674982537cf574d3929cea203a2b6fa/server/src/main/scala/linguistic/dao/Accounts.scala
   * https://github.com/dekses/cassandra-lock/blob/master/src/main/java/com/dekses/cassandra/lock/LockFactory.java
@@ -50,17 +51,17 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
 
   private val forceAcquireTimeout = system.settings.config
     .getDuration("akka.cluster.split-brain-resolver.stable-after")
-    .plus(java.time.Duration.ofSeconds(2)) //the more X the safer it becomes
+    .plus(java.time.Duration.ofSeconds(2)) // the more X the safer it becomes
     .asScala
 
   private val select = SimpleStatement
     .builder(s"SELECT owner FROM $ksName.leases WHERE name = ?")
     .addPositionalValues(settings.leaseName)
     .setConsistencyLevel(ConsistencyLevel.LOCAL_QUORUM)
-    //A SERIAL consistency level allows reading the current (and possibly uncommitted) state of data without proposing a new addition or update.
-    //If a SERIAL read finds an uncommitted transaction in progress, the database performs a read repair as part of the commit.
-    .setSerialConsistencyLevel(ConsistencyLevel.LOCAL_SERIAL) //for 1 dc
-    //.setTracing()
+    // A SERIAL consistency level allows reading the current (and possibly uncommitted) state of data without proposing a new addition or update.
+    // If a SERIAL read finds an uncommitted transaction in progress, the database performs a read repair as part of the commit.
+    .setSerialConsistencyLevel(ConsistencyLevel.LOCAL_SERIAL) // for 1 dc
+    // .setTracing()
     .build()
 
   private val insert = SimpleStatement
@@ -135,10 +136,10 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
         case e: WriteTimeoutException ⇒
           system.log.error(e, "Cassandra write error :")
           if (e.getWriteType eq WriteType.CAS) {
-            //The timeout has happened while doing the compare-and-swap for an conditional update.
-            //In this case, the update may or may not have been applied so we try to re-read it.
+            // The timeout has happened while doing the compare-and-swap for an conditional update.
+            // In this case, the update may or may not have been applied so we try to re-read it.
             cqlSession.flatMap(_.executeAsync(select).toScala.map(_.one().getString("owner") == settings.ownerName))
-            //akka.pattern.after(1.second, system.scheduler)(cqlSession.flatMap(_.executeAsync(select).toScala.map(_.one().getString("owner") == settings.ownerName)))
+            // akka.pattern.after(1.second, system.scheduler)(cqlSession.flatMap(_.executeAsync(select).toScala.map(_.one().getString("owner") == settings.ownerName)))
           } else Future.successful(false)
         case NonFatal(ex) ⇒
           system.log.error(ex, "CassandraLease {}. Acquire error", settings.leaseName)

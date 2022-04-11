@@ -23,8 +23,8 @@ object CassandraLease0 {
 
 //see akka.coordination.lease.kubernetes.KubernetesLease
 /**  CREATE TABLE IF NOT EXISTS msg.leases (name text PRIMARY KEY, owner text) with default_time_to_live = ttl
-  *  where ttl == akka.cluster.split-brain-resolver.stable-after * 2.5
-  */
+ *  where ttl == akka.cluster.split-brain-resolver.stable-after * 2.5
+ */
 final class CassandraLease0(system: ExtendedActorSystem, leaseTaken: AtomicBoolean, settings: LeaseSettings)
     extends Lease(settings) {
 
@@ -100,4 +100,4 @@ final class CassandraLease0(system: ExtendedActorSystem, leaseTaken: AtomicBoole
           Future.successful(false)
       }
 }
-*/
+ */

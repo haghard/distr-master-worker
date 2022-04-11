@@ -1,9 +1,13 @@
 import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.13"
-val cassandraPluginVersion = "1.0.4"  //"0.103"
-val AkkaManagementVersion  = "1.0.9"
+val akkaVersion = "2.6.19"
+val cassandraPluginVersion = "1.0.5" //"0.103"
+val AkkaManagementVersion  = "1.1.3"
+
+val akkaHttpVersion = "10.2.9"
+
+val AkkaPersistenceJdbcVersion = "5.0.4"
 
 lazy val scalacSettings = Seq(
   scalacOptions ++= Seq(
@@ -11,7 +15,7 @@ lazy val scalacSettings = Seq(
     //"-deprecation",             // Emit warning and location for usages of deprecated APIs.
     "-unchecked",               // Enable additional warnings where generated code depends on assumptions.
     "-encoding", "UTF-8",       // Specify character encoding used by source files.
-    "-Ywarn-dead-code",         // Warn when dead code is identified.
+    //"-Ywarn-dead-code",         // Warn when dead code is identified.
     "-Ywarn-extra-implicit",    // Warn when more than one implicit parameter section is defined.
     "-Ywarn-numeric-widen",     // Warn when numerics are widened.
     "-Ywarn-unused:implicits",  // Warn if an implicit parameter is unused.
@@ -24,7 +28,7 @@ lazy val scalacSettings = Seq(
   )
 )
 
-//++ 2.12.13 or ++ 2.13.4
+//++ 2.12.15 or ++ 2.13.9
 val `distr-master-worker` = project
   .in(file("."))
   .settings(SbtMultiJvm.multiJvmSettings: _*)
@@ -32,7 +36,7 @@ val `distr-master-worker` = project
   .settings(
     name := "dist-master-worker",
     version := "0.0.1",
-    scalaVersion := "2.13.5",
+    scalaVersion := "2.13.8",
 
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-typed"      % akkaVersion,
@@ -43,30 +47,38 @@ val `distr-master-worker` = project
       // this allows us to start cassandra from the sample
       "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % cassandraPluginVersion,
 
-      "com.typesafe.akka" %% "akka-coordination" % akkaVersion,
+      //"com.lightbend.akka"      %% "akka-persistence-jdbc"          %     AkkaPersistenceJdbcVersion,
+      //"com.swissborg"           %% "akka-persistence-postgres"      %     "0.5.0-M7",
+      "com.typesafe.akka"         %% "akka-coordination" % akkaVersion,
+
+      "com.typesafe.akka"                  %% "akka-cluster-sharding-typed" % akkaVersion,
+
       //"com.lightbend.akka.management" %% "akka-lease-kubernetes" % AkkaManagementVersion,
 
+      //transport = aeron-udp
+      "io.aeron" % "aeron-driver" % "1.37.0",
+      "io.aeron" % "aeron-client" % "1.37.0",
 
       //"org.iq80.leveldb"            % "leveldb"          % "0.7",
       //"org.fusesource.leveldbjni"   % "leveldbjni-all"   % "1.8",
 
       //"com.typesafe.akka" %% "akka-cluster-sharding-typed"  % akkaVersion, //to shade old akka-cluster-sharding
 
-      "com.typesafe.akka" %% "akka-http"               % "10.2.4",
-      "com.typesafe.akka" %% "akka-http-spray-json"    % "10.2.4",
+      "com.typesafe.akka" %% "akka-http"               % akkaHttpVersion,
+      "com.typesafe.akka" %% "akka-http-spray-json"    % akkaHttpVersion,
       "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaManagementVersion,
 
       "com.typesafe.akka" %% "akka-slf4j"       %   akkaVersion,
-      "ch.qos.logback"    %  "logback-classic"  %   "1.2.3",
+      "ch.qos.logback"    %  "logback-classic"  %   "1.2.11",
 
-      //"ru.odnoklassniki" % "one-nio" % "1.2.0",
+      "ru.odnoklassniki" % "one-nio" % "1.5.0",
       
-      //("com.lihaoyi" % "ammonite" % "2.3.8-32-64308dc3" % "test").cross(CrossVersion.full),
+      ("com.lihaoyi" % "ammonite" % "2.5.2" % "test").cross(CrossVersion.full),
 
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion),
 
       //fork in run := true,
-      parallelExecution in Test := false,
+    Test / parallelExecution := false,
   ) configs MultiJvm
 
 
@@ -81,6 +93,9 @@ dependencyOverrides += "com.typesafe.akka" %% "akka-cluster-sharding"       % ak
 //dependencyOverrides += "com.typesafe.akka" %% "akka-persistence-typed"      % akkaVersion
 //dependencyOverrides += "com.typesafe.akka" %% "akka-cluster-sharding-typed" % akkaVersion
 
+addCommandAlias("c", "compile")
+addCommandAlias("r", "compile")
+
 //test:run test:console
 sourceGenerators in Test += Def.task {
   val file = (sourceManaged in Test).value / "amm.scala"
@@ -90,8 +105,6 @@ sourceGenerators in Test += Def.task {
 
 promptTheme := ScalapenosTheme
 
-PB.targets in Compile := Seq(
-  scalapb.gen() -> (sourceManaged in Compile).value
-)
+Compile / PB.targets := Seq(scalapb.gen() -> (Compile / sourceManaged).value)
 
 libraryDependencies += "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"

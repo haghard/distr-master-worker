@@ -11,19 +11,20 @@ import scala.concurrent.duration.DurationInt
 //The consumer talks with ConsumerController
 
 /** The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
-  * while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
-  * So we need to confirm to receive the next message.
+  * while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is
+  * confirmed. So we need to confirm to receive the next message.
   */
 object Worker {
 
   sealed trait Command
-  final case class WorkerJob(seqNum: Long, jobDesc: Array[Byte])
+  final case class WorkerJob(seqNum: Long, jobDesc: Array[Byte]) extends Command
+
   case object Flush                                                              extends Command
   private case class DeliveryEnvelope(d: ConsumerController.Delivery[WorkerJob]) extends Command
 
   def apply(address: Address): Behavior[Command] =
     Behaviors.setup { implicit ctx ⇒
-      //val config = ctx.system.settings.config
+      // val config = ctx.system.settings.config
       val settings = akka.actor.typed.delivery.ConsumerController.Settings(ctx.system)
 
       /*val settings = akka.actor.typed.delivery.ConsumerController
@@ -42,35 +43,35 @@ object Worker {
         config.getBoolean("only-flow-control")
       )*/
 
-      val flushPeriod = 10.second
-
       ctx.log.warn("★ ★ ★ ★   Worker {} ★ ★ ★ ★", address)
 
-      //ConsumerController
+      // ConsumerController
       ctx
         .spawn(ConsumerController(serviceKey, settings), "consumer-controller")
         .tell(ConsumerController.Start(ctx.messageAdapter[ConsumerController.Delivery[WorkerJob]](DeliveryEnvelope(_))))
 
       Behaviors.withTimers { t ⇒
-        //flush timeout  1.second
+        val flushPeriod = 10.second
+
         t.startTimerAtFixedRate(Flush, flushPeriod)
         active(new mutable.ListBuffer[Long]())
-        //active0(new mutable.ListBuffer[Long](), true)
+      // active0(new mutable.ListBuffer[Long](), true)
       }
     }
 
   def active(
     buf: mutable.ListBuffer[Long]
   )(implicit ctx: ActorContext[Worker.Command]): Behavior[Command] =
-    Behaviors.receiveMessage {
+    Behaviors.receiveMessagePartial {
       case Flush ⇒
-        if (buf.nonEmpty) {
-          ctx.log.warn(s"Flush processed batch [${buf.mkString(",")}]")
+        if (buf.isEmpty) active(buf)
+        else {
+          ctx.log.warn(s"Flush batch [${buf.mkString(",")}]")
           buf.clear()
           active(buf)
-        } else active(buf)
+        }
       case DeliveryEnvelope(env) ⇒
-        //val _   = ctx.log.warn(s"received { env:${env.seqNr}, msg:${env.message.seqNum} }")
+        // val _   = ctx.log.warn(s"received { env:${env.seqNr}, msg:${env.message.seqNum} }")
         val job = env.message
         /*if (isFirst) {
           //buf.append(job.seqNum)
@@ -86,15 +87,16 @@ object Worker {
 
         buf += job.seqNum
 
-        //The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
-        //while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
-        //So we need to confirm to receive the next message
+        // The next message is not delivered until the previous one is confirmed. Any messages from the producer that arrive
+        // while waiting for the confirmation are stashed by the ConsumerController and delivered when the previous message is confirmed.
+        // So we need to confirm to receive the next message
         env.confirmTo.tell(ConsumerController.Confirmed)
         active(buf)
+
+      // case Worker.WorkerJob(seqNum, jobDesc) ⇒ Behaviors.unhandled
     }
 
-  //
-  def active0(
+  /*def active0(
     buf: mutable.ListBuffer[Long],
     isFirst: Boolean = false
   )(implicit ctx: ActorContext[Worker.Command]): Behavior[Command] =
@@ -106,11 +108,11 @@ object Worker {
           active(buf)
         } else active(buf)
       case DeliveryEnvelope(env) ⇒
-        //val _   = ctx.log.warn(s"received { env:${env.seqNr}, msg:${env.message.seqNum} }")
+        // val _   = ctx.log.warn(s"received { env:${env.seqNr}, msg:${env.message.seqNum} }")
         val job = env.message
         if (isFirst) {
-          //buf.append(job.seqNum)
-          //buf.addOne(job.seqNum)
+          // buf.append(job.seqNum)
+          // buf.addOne(job.seqNum)
           buf += job.seqNum
           env.confirmTo.tell(ConsumerController.Confirmed)
         } else if (java.util.concurrent.ThreadLocalRandom.current().nextBoolean()) {
@@ -118,5 +120,5 @@ object Worker {
           env.confirmTo.tell(ConsumerController.Confirmed)
         }
         active(buf)
-    }
+    }*/
 }

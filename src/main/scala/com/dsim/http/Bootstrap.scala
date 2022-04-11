@@ -23,7 +23,7 @@ object Bootstrap {
 final case class Bootstrap(routes: Route, host: String, httpPort: Int)(implicit
   system: ActorSystem[Nothing]
 ) {
-  //implicit val b = system.toClassic
+  // implicit val b = system.toClassic
   implicit val s        = system.executionContext
   private val cShutdown = CoordinatedShutdown(system)
 
@@ -44,18 +44,17 @@ final case class Bootstrap(routes: Route, host: String, httpPort: Int)(implicit
         }
 
         cShutdown.addTask(PhaseServiceUnbind, "http-api.unbind") { () ⇒
-          //No new connections are accepted. Existing connections are still allowed to perform request/response cycles
+          // No new connections are accepted. Existing connections are still allowed to perform request/response cycles
           binding.unbind().map { r ⇒
             system.log.info("CoordinatedShutdown [http-api.unbind]")
             r
           }
         }
 
-        //graceful termination request being handled on this connection
+        // graceful termination request being handled on this connection
         cShutdown.addTask(PhaseServiceRequestsDone, "http-api.terminate") { () ⇒
-          /** It doesn't accept new connection but it drains the existing connections
-            * Until the `terminationDeadline` all the req that have been accepted will be completed
-            * and only than the shutdown will continue
+          /** It doesn't accept new connection but it drains the existing connections Until the `terminationDeadline`
+            * all the req that have been accepted will be completed and only than the shutdown will continue
             */
           binding.terminate(Bootstrap.terminationDeadline).map { _ ⇒
             system.log.info("CoordinatedShutdown [http-api.terminate]")
@@ -63,7 +62,7 @@ final case class Bootstrap(routes: Route, host: String, httpPort: Int)(implicit
           }
         }
 
-        //forcefully kills connections that are still open
+        // forcefully kills connections that are still open
         cShutdown.addTask(PhaseServiceStop, "close.connections") { () ⇒
           Http().shutdownAllConnectionPools().map { _ ⇒
             system.log.info("CoordinatedShutdown [close.connections]")
