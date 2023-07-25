@@ -188,7 +188,7 @@ trait ProtocSupport {
       state.getCurrentSeqNr,
       state.getHighestConfirmedSeqNr,
       state.getConfirmedList.asScala
-        .map(confirmed ⇒ confirmed.getQualifier → (confirmed.getSeqNr → confirmed.getTimestamp))
+        .map(confirmed ⇒ confirmed.getQualifier -> (confirmed.getSeqNr -> confirmed.getTimestamp))
         .toMap,
       state.getUnconfirmedList.asScala.toVector.map(durableQueueMessageSentFromProto)
     )

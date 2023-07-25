@@ -9,7 +9,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 //producer talks to ProducerController
 
-/** Reliable delivery: Work pulling mode (fan-out) Allows us to do thinks that are very similar to what kafka's consumer
+/** Reliable delivery: Work pulling mode (fan-out) Allows us to do things that are very similar to what kafka's consumer
   * group does.
   *
   * Six things you can do in Akka 2.6 by Chris Batey https://youtu.be/85FW9EUOixg?t=772
