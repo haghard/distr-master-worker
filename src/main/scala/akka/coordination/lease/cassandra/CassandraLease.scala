@@ -13,7 +13,7 @@ import com.datastax.oss.driver.api.core.servererrors.WriteType
 
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.compat.java8.FutureConverters.CompletionStageOps
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import CassandraLease._
 import com.dsim.CassandraSessionExtension
@@ -42,7 +42,7 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
 
   private val cassandraSession = CassandraSessionExtension(system.classicSystem).session
 
-  implicit val ec = cassandraSession.ec
+  implicit val ec: ExecutionContext = cassandraSession.ec
 
   private val cqlSession = cassandraSession.underlying()
 
@@ -89,8 +89,8 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
 
   override def release(): Future[Boolean] =
     cqlSession
-      .flatMap { cqlSession ⇒
-        cqlSession.executeAsync(delete).toScala.map { r ⇒
+      .flatMap { cqlSession =>
+        cqlSession.executeAsync(delete).toScala.map { r =>
           val bool = r.wasApplied()
 
           if (settings.leaseName.contains(SbrPref))
@@ -105,10 +105,10 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
   override def acquire(): Future[Boolean] =
     acquire(ConstantFun.scalaAnyToUnit)
 
-  override def acquire(leaseLostCallback: Option[Throwable] ⇒ Unit): Future[Boolean] =
+  override def acquire(leaseLostCallback: Option[Throwable] => Unit): Future[Boolean] =
     cqlSession
-      .flatMap { cqlSession ⇒
-        cqlSession.executeAsync(insert).toScala.flatMap { r ⇒
+      .flatMap { cqlSession =>
+        cqlSession.executeAsync(insert).toScala.flatMap { r =>
           val bool = r.wasApplied()
           if (settings.leaseName.contains("sbr"))
             system.log.warning(s"CassandraLeaseSBR ${settings.leaseName} by ${settings.ownerName} acquired: $bool")
@@ -117,7 +117,7 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
           if (bool) Future.successful(bool)
           else
             akka.pattern.after(forceAcquireTimeout, system.scheduler)(
-              cqlSession.executeAsync(forcedInsert).toScala.map { r ⇒
+              cqlSession.executeAsync(forcedInsert).toScala.map { r =>
                 val bool = r.wasApplied()
 
                 if (settings.leaseName.contains(SbrPref))
@@ -133,7 +133,7 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
         }
       }
       .recoverWith {
-        case e: WriteTimeoutException ⇒
+        case e: WriteTimeoutException =>
           system.log.error(e, "Cassandra write error :")
           if (e.getWriteType eq WriteType.CAS) {
             // The timeout has happened while doing the compare-and-swap for an conditional update.
@@ -141,7 +141,7 @@ final class CassandraLease(system: ExtendedActorSystem, leaseTaken: AtomicBoolea
             cqlSession.flatMap(_.executeAsync(select).toScala.map(_.one().getString("owner") == settings.ownerName))
             // akka.pattern.after(1.second, system.scheduler)(cqlSession.flatMap(_.executeAsync(select).toScala.map(_.one().getString("owner") == settings.ownerName)))
           } else Future.successful(false)
-        case NonFatal(ex) ⇒
+        case NonFatal(ex) =>
           system.log.error(ex, "CassandraLease {}. Acquire error", settings.leaseName)
           Future.successful(false)
       }

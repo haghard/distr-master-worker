@@ -32,13 +32,13 @@ object Runner extends App {
 
   def guardian(hostName: String, port: Int): Behavior[Nothing] =
     Behaviors
-      .setup[SelfUp] { ctx ⇒
+      .setup[SelfUp] { ctx =>
         implicit val sys = ctx.system
 
         val cluster = akka.cluster.typed.Cluster(ctx.system)
         cluster.subscriptions ! akka.cluster.typed.Subscribe(ctx.self, classOf[SelfUp])
 
-        Behaviors.receive[SelfUp] { case (ctx, _ @SelfUp(_ /*state*/ )) ⇒
+        Behaviors.receive[SelfUp] { case (ctx, _ @SelfUp(_ /*state*/ )) =>
           // val upMemebers = state.members.filter(_.status == akka.cluster.MemberStatus.Up).map(_.address)
 
           cluster.subscriptions ! Unsubscribe(ctx.self)
@@ -66,19 +66,19 @@ object Runner extends App {
 
           Bootstrap(ClusterHttpManagementRoutes(akka.cluster.Cluster(sys)), hostName, port + 100)
 
-          ctx.system.scheduler.scheduleWithFixedDelay(3.seconds, 900.millis) { () ⇒
+          ctx.system.scheduler.scheduleWithFixedDelay(3.seconds, 900.millis) { () =>
             master.tell(Master.JobDescription(System.currentTimeMillis.toString))
           }(ctx.executionContext)
 
           Behaviors.receiveSignal[SelfUp] {
-            case (_, Terminated(`worker`)) ⇒
+            case (_, Terminated(`worker`)) =>
               ctx.log.error(s"Unrecoverable error. $worker has been terminated. Shutting down...")
               CoordinatedShutdown(sys).run(CriticalError)
               Behaviors.same
-            case (_, PostStop) ⇒
+            case (_, PostStop) =>
               ctx.log.warn("Guardian has been stopped")
               Behaviors.same
-            case (_, other) ⇒
+            case (_, other) =>
               ctx.log.warn(s"Guardian got unexpected $other signal. Ignore it")
               Behaviors.ignore
           }

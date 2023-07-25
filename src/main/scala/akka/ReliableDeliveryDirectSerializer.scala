@@ -19,7 +19,7 @@ import com.google.protobuf.CodedInputStream
 
 object ReliableDeliveryDirectSerializer {
 
-  implicit val releasable: Releasable[CodedOutputStream] = (r: CodedOutputStream) ⇒ r.flush()
+  implicit val releasable: Releasable[CodedOutputStream] = (r: CodedOutputStream) => r.flush()
 }
 
 /** https://doc.akka.io/docs/akka/current/remoting-artery.html#bytebuffer-based-serialization
@@ -49,78 +49,78 @@ class ReliableDeliveryDirectSerializer(system: ExtendedActorSystem)
 
   override def manifest(obj: AnyRef): String =
     obj match {
-      case _: Master.JobDescription ⇒ obj.getClass.getName
-      case _: Worker.WorkerJob      ⇒ obj.getClass.getName
-      case _                        ⇒ super.manifest(obj)
+      case _: Master.JobDescription => obj.getClass.getName
+      case _: Worker.WorkerJob      => obj.getClass.getName
+      case _                        => super.manifest(obj)
     }
 
   override def toBinary(o: AnyRef): Array[Byte] =
     o match {
-      case mCmd: Master.Command ⇒
+      case mCmd: Master.Command =>
         mCmd match {
-          case Master.JobDescription(jobDesc) ⇒
+          case Master.JobDescription(jobDesc) =>
             JobDescriptionPB(jobDesc).toByteArray
         }
-      case wCmd: Worker.Command ⇒
+      case wCmd: Worker.Command =>
         wCmd match {
-          case Worker.WorkerJob(seqNum, jobDesc) ⇒
+          case Worker.WorkerJob(seqNum, jobDesc) =>
             WorkerJobPB(
               seqNum,
               com.google.protobuf.ByteString.readFrom(new ByteArrayInputStream(jobDesc))
             ).toByteArray
-          case Worker.Flush ⇒
+          case Worker.Flush =>
             throw new IllegalArgumentException("Cannot serialize Worker.Flush")
         }
-      case other ⇒
+      case other =>
         super.toBinary(other)
     }
 
   // buffer based avoiding a copy for artery
   override def toBinary(obj: AnyRef, directByteBuffer: ByteBuffer): Unit =
     obj match {
-      case mCmd: Master.Command ⇒
+      case mCmd: Master.Command =>
         mCmd match {
-          case Master.JobDescription(jobDesc) ⇒
+          case Master.JobDescription(jobDesc) =>
             Using.resource(new ByteBufferOutputStream(directByteBuffer))(JobDescriptionPB(jobDesc).writeTo(_))
         }
-      case wCmd: Worker.Command ⇒
+      case wCmd: Worker.Command =>
         wCmd match {
-          case Worker.WorkerJob(seqNum, jobDesc) ⇒
+          case Worker.WorkerJob(seqNum, jobDesc) =>
             Using.resource(new ByteBufferOutputStream(directByteBuffer))(
               WorkerJobPB(seqNum, com.google.protobuf.ByteString.readFrom(new ByteArrayInputStream(jobDesc)))
                 .writeTo(_)
             )
 
-          case Worker.Flush ⇒
+          case Worker.Flush =>
             throw new IllegalArgumentException("Cannot serialize Worker.Flush")
         }
 
       // from akka.cluster.typed.internal.delivery.ReliableDeliverySerializer
-      case m: ConsumerController.SequencedMessage[_] ⇒
+      case m: ConsumerController.SequencedMessage[_] =>
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(msg.writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(sequencedMessageToBinary(m).writeTo(_))
 
-      case m: ProducerControllerImpl.Ack ⇒
+      case m: ProducerControllerImpl.Ack =>
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(ackToBinary(m).writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(ackToBinary(m).writeTo(_))
 
-      case m: ProducerControllerImpl.Request ⇒
+      case m: ProducerControllerImpl.Request =>
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(requestToBinary(m).writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(requestToBinary(m).writeTo(_))
 
-      case m: ProducerControllerImpl.Resend ⇒
+      case m: ProducerControllerImpl.Resend =>
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(resendToBinary(m).writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(resendToBinary(m).writeTo(_))
 
-      case m: ProducerController.RegisterConsumer[_] ⇒
+      case m: ProducerController.RegisterConsumer[_] =>
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(registerConsumerToBinary(m).writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(registerConsumerToBinary(m).writeTo(_))
 
-      case m: DurableProducerQueue.MessageSent[_] ⇒
+      case m: DurableProducerQueue.MessageSent[_] =>
         system.log.warning("MessageSent. Confirmed:[{}:{}]", m.seqNr, m.confirmationQualifier)
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(durableQueueMessageSentToProto(m).writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(durableQueueMessageSentToProto(m).writeTo(_))
-      case m: DurableProducerQueue.Confirmed ⇒
+      case m: DurableProducerQueue.Confirmed =>
         system.log.warning("State. Confirmed:[{}:{}]", m.seqNr, m.confirmationQualifier)
         /*Using.resource(new ByteBufferOutputStream(directByteBuffer))(
           durableQueueConfirmedToProto(m.confirmationQualifier, m.seqNr, m.timestampMillis).writeTo(_)
@@ -128,15 +128,15 @@ class ReliableDeliveryDirectSerializer(system: ExtendedActorSystem)
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(
           durableQueueConfirmedToProto(m.confirmationQualifier, m.seqNr, m.timestampMillis).writeTo(_)
         )
-      case m: DurableProducerQueue.State[_] ⇒
+      case m: DurableProducerQueue.State[_] =>
         system.log.warning("State [{}:{}:{}]", m.currentSeqNr, m.confirmedSeqNr, m.highestConfirmedSeqNr)
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(durableQueueStateToBinary(m).writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(durableQueueStateToBinary(m).writeTo(_))
-      case m: DurableProducerQueue.Cleanup ⇒
+      case m: DurableProducerQueue.Cleanup =>
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(durableQueueCleanupToBinary(m).writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(durableQueueCleanupToBinary(m).writeTo(_))
 
-      case _ ⇒
+      case _ =>
         // goes with extra array allocation
         system.log.warning(s"toBinary ${obj.getClass.getName} ${directByteBuffer.isDirect}")
         val bytes = super.toBinary(obj)
@@ -145,11 +145,11 @@ class ReliableDeliveryDirectSerializer(system: ExtendedActorSystem)
 
   override def fromBinary(directByteBuffer: ByteBuffer, manifest: String): AnyRef =
     manifest match {
-      case SequencedMessageManifest ⇒
+      case SequencedMessageManifest =>
         val m: ConsumerController.SequencedMessage[Worker.WorkerJob] =
           sequencedMessageFromBinary[Worker.WorkerJob](directByteBuffer)
         m
-      case DurableQueueStateManifest ⇒
+      case DurableQueueStateManifest =>
         val m: DurableProducerQueue.State[Worker.WorkerJob] =
           durableQueueStateFromBinary[Worker.WorkerJob](directByteBuffer)
         system.log.warning(
@@ -157,15 +157,15 @@ class ReliableDeliveryDirectSerializer(system: ExtendedActorSystem)
         )
         m
 
-      case AckManifest                     ⇒ ackFromBinary(directByteBuffer)
-      case RequestManifest                 ⇒ requestFromBinary(directByteBuffer)
-      case DurableQueueMessageSentManifest ⇒ durableQueueMessageSentFromBinary(directByteBuffer)
-      case DurableQueueConfirmedManifest   ⇒ durableQueueConfirmedFromBinary(directByteBuffer)
-      case ResendManifest                  ⇒ resendFromBinary(directByteBuffer)
-      case RegisterConsumerManifest        ⇒ registerConsumerFromBinary(directByteBuffer)
+      case AckManifest                     => ackFromBinary(directByteBuffer)
+      case RequestManifest                 => requestFromBinary(directByteBuffer)
+      case DurableQueueMessageSentManifest => durableQueueMessageSentFromBinary(directByteBuffer)
+      case DurableQueueConfirmedManifest   => durableQueueConfirmedFromBinary(directByteBuffer)
+      case ResendManifest                  => resendFromBinary(directByteBuffer)
+      case RegisterConsumerManifest        => registerConsumerFromBinary(directByteBuffer)
 
       // TODO: support more messages
-      case other ⇒
+      case other =>
         // system.log.warning(s"fromBinary: [$manifest]")
 
         if (other == classOf[Master.JobDescription].getName) {

@@ -43,11 +43,11 @@ object Master {
 
   case object ShutDown extends Command
 
-  def leaseLostCallback: Option[Throwable] ⇒ Unit =
+  def leaseLostCallback: Option[Throwable] => Unit =
     ???
 
   def apply(): Behavior[Master.Command] =
-    Behaviors.setup { implicit ctx ⇒
+    Behaviors.setup { implicit ctx =>
       // implicit val exc = ctx.executionContext
       // val serialization = SerializationExtension(ctx.system.toClassic)
       // val serializer = serialization.serializerFor(classOf[akka.actor.typed.delivery.ConsumerController.SequencedMessage[_]])
@@ -95,12 +95,12 @@ object Master {
     buf: StashBuffer[Master.Command]
   ): Behavior[Command] =
     Behaviors.receiveMessagePartial {
-      case job: Master.JobDescription ⇒ // comes from outside
+      case job: Master.JobDescription => // comes from outside
         if (buf.isFull) ctx.log.warn("Too many requests. Master.Producer is overloaded !!!")
         else buf.stash(job)
         Behaviors.same
 
-      case r: ReqNextWrapper ⇒
+      case r: ReqNextWrapper =>
         buf.unstashAll(active(seqNum, r.rn))
     }
 
@@ -109,7 +109,7 @@ object Master {
     next: WorkPullingProducerController.RequestNext[Worker.WorkerJob]
   )(implicit ctx: ActorContext[Master.Command], buf: StashBuffer[Master.Command]): Behavior[Command] =
     Behaviors.receiveMessagePartial {
-      case Master.JobDescription(desc @ _) ⇒
+      case Master.JobDescription(desc @ _) =>
         val b = new Array[Byte](1024 * 1)
         ThreadLocalRandom.current().nextBytes(b)
 
@@ -130,7 +130,7 @@ object Master {
         waitForNext()
          */
         idle(seqNum + 1)
-      case _: ReqNextWrapper ⇒
+      case _: ReqNextWrapper =>
         ctx.log.error("Unexpected Demand. Stop the Master")
         Behaviors.stopped
     }

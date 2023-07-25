@@ -1,6 +1,7 @@
 package com.dsim
 
 import akka.actor.{ActorSystem, ClassicActorSystemProvider, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
+import akka.dispatch.MessageDispatcher
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.query.PersistenceQuery
 import akka.stream.alpakka.cassandra.scaladsl.CassandraSession
@@ -24,7 +25,7 @@ class CassandraSessionExtension(system: ActorSystem) extends Extension {
 
   lazy val keyspace = system.settings.config.getString("akka.persistence.cassandra.journal.keyspace")
 
-  implicit val ec = system.dispatchers.lookup("")
+  implicit val ec: MessageDispatcher = system.dispatchers.lookup("???")
 
   lazy val session: CassandraSession = {
 
@@ -34,7 +35,7 @@ class CassandraSessionExtension(system: ActorSystem) extends Extension {
 
     // TODO: avoid blocking, although blocking is fine during startup
     scala.concurrent.Await.result(
-      akka.pattern.retry(() ⇒ createLeaseTable(cassandraSession), 10)(ec),
+      akka.pattern.retry(() => createLeaseTable(cassandraSession), 10)(ec),
       Duration.Inf
     )
     cassandraSession

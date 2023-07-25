@@ -23,7 +23,7 @@ object Worker {
   private case class DeliveryEnvelope(d: ConsumerController.Delivery[WorkerJob]) extends Command
 
   def apply(address: Address): Behavior[Command] =
-    Behaviors.setup { implicit ctx ⇒
+    Behaviors.setup { implicit ctx =>
       // val config = ctx.system.settings.config
       val settings = akka.actor.typed.delivery.ConsumerController.Settings(ctx.system)
 
@@ -50,7 +50,7 @@ object Worker {
         .spawn(ConsumerController(serviceKey, settings), "consumer-controller")
         .tell(ConsumerController.Start(ctx.messageAdapter[ConsumerController.Delivery[WorkerJob]](DeliveryEnvelope(_))))
 
-      Behaviors.withTimers { t ⇒
+      Behaviors.withTimers { t =>
         val flushPeriod = 10.second
 
         t.startTimerAtFixedRate(Flush, flushPeriod)
@@ -63,14 +63,14 @@ object Worker {
     buf: mutable.ListBuffer[Long]
   )(implicit ctx: ActorContext[Worker.Command]): Behavior[Command] =
     Behaviors.receiveMessagePartial {
-      case Flush ⇒
+      case Flush =>
         if (buf.isEmpty) active(buf)
         else {
           ctx.log.warn(s"Flush batch [${buf.mkString(",")}]")
           buf.clear()
           active(buf)
         }
-      case DeliveryEnvelope(env) ⇒
+      case DeliveryEnvelope(env) =>
         // val _   = ctx.log.warn(s"received { env:${env.seqNr}, msg:${env.message.seqNum} }")
         val job = env.message
         /*if (isFirst) {

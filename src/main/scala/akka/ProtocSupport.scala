@@ -42,11 +42,11 @@ trait ProtocSupport {
     b.setProducerControllerRef(resolver.toSerializationFormat(m.producerController))
 
     m.message match {
-      case chunk: ChunkedMessage ⇒
+      case chunk: ChunkedMessage =>
         b.setMessage(chunkedMessageToProto(chunk))
         b.setFirstChunk(chunk.firstChunk)
         b.setLastChunk(chunk.lastChunk)
-      case _ ⇒
+      case _ =>
         b.setMessage(payloadSupport.payloadBuilder(m.message))
     }
 
@@ -141,11 +141,11 @@ trait ProtocSupport {
     b.setTimestamp(m.timestampMillis)
 
     m.message match {
-      case chunk: ChunkedMessage ⇒
+      case chunk: ChunkedMessage =>
         b.setMessage(chunkedMessageToProto(chunk))
         b.setFirstChunk(chunk.firstChunk)
         b.setLastChunk(chunk.lastChunk)
-      case _ ⇒
+      case _ =>
         b.setMessage(payloadSupport.payloadBuilder(m.message))
     }
 
@@ -168,7 +168,7 @@ trait ProtocSupport {
     val b = ReliableDelivery.State.newBuilder()
     b.setCurrentSeqNr(m.currentSeqNr)
     b.setHighestConfirmedSeqNr(m.highestConfirmedSeqNr)
-    b.addAllConfirmed(m.confirmedSeqNr.map { case (qualifier, (seqNr, timestamp)) ⇒
+    b.addAllConfirmed(m.confirmedSeqNr.map { case (qualifier, (seqNr, timestamp)) =>
       durableQueueConfirmedToProto(qualifier, seqNr, timestamp)
     }.asJava)
     b.addAllUnconfirmed(m.unconfirmed.map(durableQueueMessageSentToProto).asJava)
@@ -188,7 +188,7 @@ trait ProtocSupport {
       state.getCurrentSeqNr,
       state.getHighestConfirmedSeqNr,
       state.getConfirmedList.asScala
-        .map(confirmed ⇒ confirmed.getQualifier -> (confirmed.getSeqNr -> confirmed.getTimestamp))
+        .map(confirmed => confirmed.getQualifier -> (confirmed.getSeqNr -> confirmed.getTimestamp))
         .toMap,
       state.getUnconfirmedList.asScala.toVector.map(durableQueueMessageSentFromProto)
     )

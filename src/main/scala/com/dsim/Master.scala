@@ -22,12 +22,12 @@ object Master {
   final case class GetWorkers(replyTo: ActorRef[http.Api.Status]) extends HttpReq
 
   def apply(master: Address): Behavior[Protocol] =
-    Behaviors.setup { ctx ⇒
+    Behaviors.setup { ctx =>
       ctx.log.warn("Start master on {}", master)
 
       ctx.system.receptionist ! Receptionist.Subscribe(
         MasterWorkerKey,
-        ctx.messageAdapter[Receptionist.Listing] { case MasterWorkerKey.Listing(workers) ⇒
+        ctx.messageAdapter[Receptionist.Listing] { case MasterWorkerKey.Listing(workers) =>
           MembershipChanged(workers)
         }
       )
@@ -40,14 +40,14 @@ object Master {
     ctx: ActorContext[Protocol],
     counter: Long = 0L
   ): Behavior[Protocol] =
-    Behaviors.withTimers { timer ⇒
+    Behaviors.withTimers { timer =>
       timer.startTimerAtFixedRate(Tick, 5.seconds)
 
       Behaviors.receiveMessage {
-        case MembershipChanged(workers) ⇒
+        case MembershipChanged(workers) =>
           ctx.log.warn("Membership changed: {}", workers.map(_.path).mkString(","))
           active(master, workers, ctx, counter)
-        case GetWorkers(replyTo) ⇒
+        case GetWorkers(replyTo) =>
           val localWorker = workers.filter(_.path.address.hasLocalScope).head
           val remote      = workers - localWorker
 
@@ -58,10 +58,10 @@ object Master {
           val paths = remote.map(_.path) + localWorkerPath
           replyTo.tell(Api.Status(master.toString, paths.map(_.toString).toList))
           Behaviors.same
-        case Tick ⇒
+        case Tick =>
           workers.foreach(_.tell(ScheduleTask(counter, ctx.self)))
           active(master, workers, ctx, counter + 1L)
-        case TaskAck(seqNum) ⇒
+        case TaskAck(seqNum) =>
           ctx.log.info("TaskAck: {}", seqNum)
           Behaviors.same
       }

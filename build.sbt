@@ -10,8 +10,9 @@ val AkkaHttpVersion = "10.2.10"
 val AkkaPersistenceJdbcVersion = "5.0.4"
 
 lazy val scalacSettings = Seq(
-  scalacOptions ++= Seq(
+  /*scalacOptions ++= Seq(
     "-release:17",
+    //"-target:11",
     //"-target:jvm-14",
     //"-deprecation",             // Emit warning and location for usages of deprecated APIs.
     "-unchecked",               // Enable additional warnings where generated code depends on assumptions.
@@ -26,6 +27,19 @@ lazy val scalacSettings = Seq(
     "-Ywarn-unused:patvars",    // Warn if a variable bound in a pattern is unused.
     "-Ywarn-unused:privates",   // Warn if a private member is unused.
     "-Ywarn-value-discard"      // Warn when non-Unit expression results are unused.
+  )*/
+  scalacOptions ++= Seq(
+    "-Xsource:3",
+    "-language:experimental.macros",
+    //"-Wnonunit-statement",
+    "-release:17",
+    "-deprecation",
+    "-feature",
+    "-unchecked",
+    "-Yrangepos", //semanticdb-scalac
+    "-Xlog-reflective-calls",
+    "-Xlint",
+    //"-Wconf:cat=other-match-analysis:error" //Transform exhaustivity warnings into errors.
   )
 )
 
