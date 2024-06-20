@@ -1,13 +1,38 @@
 import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
+import sbt.Keys.connectInput
+
 
 val AkkaVersion = "2.6.21"
-val cassandraPluginVersion = "1.1.1" //"0.103", 1.0.5
-
-val AkkaMngVersion  = "1.4.0"
+val CassandraPluginVersion = "1.0.5"
+val AkkaMngVersion  = "1.4.1"
 val AkkaHttpVersion = "10.2.10"
 
-val AkkaPersistenceJdbcVersion = "5.0.4"
+/*
+
+val AkkaVersion = "2.9.3"
+val AkkaHttpVersion = "10.6.3"
+val AkkaMngVersion = "1.5.2"
+val CassandraPluginVersion = "1.1.0"
+*/
+
+//val AkkaPersistenceR2dbcVersion = "1.2.4"
+//val AkkaProjectionVersion = sys.props.getOrElse("akka-projection.version", "1.5.4")
+//val AkkaDiagnosticsVersion = "2.1.1"
+
+//val AkkaPersistenceJdbcVersion = "5.0.4"
+//val AkkaPersistenceR2dbcVersion = "1.0.1"
+
+//https://repo1.maven.org/maven2/com/lihaoyi/ammonite-compiler_3.3.1/3.0.0-M2-3-b5eb4787/
+val AmmoniteVersion = "3.0.0-M2-3-b5eb4787"
+
+lazy val java17Settings = Seq(
+  "-XX:+UseZGC", // https://www.baeldung.com/jvm-zgc-garbage-collector
+  "--add-opens",
+  "java.base/java.nio=ALL-UNNAMED",
+  "--add-opens",
+  "java.base/sun.nio.ch=ALL-UNNAMED"
+)
 
 lazy val scalacSettings = Seq(
   /*scalacOptions ++= Seq(
@@ -29,21 +54,29 @@ lazy val scalacSettings = Seq(
     "-Ywarn-value-discard"      // Warn when non-Unit expression results are unused.
   )*/
   scalacOptions ++= Seq(
-    "-Xsource:3",
+    "-Xsource:3-cross",
     "-language:experimental.macros",
     //"-Wnonunit-statement",
     "-release:17",
     "-deprecation",
     "-feature",
     "-unchecked",
-    "-Yrangepos", //semanticdb-scalac
+    "-Yrangepos",
     "-Xlog-reflective-calls",
     "-Xlint",
-    //"-Wconf:cat=other-match-analysis:error" //Transform exhaustivity warnings into errors.
+
+    //https://github.com/apache/pekko-grpc/blob/88e8567e2decbca19642e5454729aa78cce455eb/project/Common.scala#L64
+    // Generated code for methods/fields marked 'deprecated'
+    "-Wconf:msg=Marked as deprecated in proto file:silent",
+
+    "-Xmigration", //Emit migration warnings under -Xsource:3 as fatal warnings, not errors; -Xmigration disables fatality (#10439 by @som-snytt, #10511)
+    "-Wconf:cat=other-match-analysis:error" //Transform exhaustivity warnings into errors.
   )
 )
 
-//++ 2.12.17 or ++ 2.13.11
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
+
+//++ 2.12.17 or ++ 2.13.14
 val `distr-master-worker` = project
   .in(file("."))
   .settings(SbtMultiJvm.multiJvmSettings: _*)
@@ -51,18 +84,22 @@ val `distr-master-worker` = project
   .settings(
     name := "dist-master-worker",
     version := "0.0.1",
-    scalaVersion := "2.13.11",
+    scalaVersion := "2.13.14",
+    javaOptions ++= java17Settings,
 
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-typed"      % AkkaVersion,
-      "com.typesafe.akka" %% "akka-persistence-typed"  % AkkaVersion, //to shade old akka-cluster-sharding
 
-      //"com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
-      "com.typesafe.akka" %% "akka-persistence-cassandra" % cassandraPluginVersion,
+      "com.typesafe.akka" %% "akka-persistence-typed"  % AkkaVersion, //to shade old akka-cluster-sharding
+      "com.typesafe.akka" %% "akka-persistence-query"  % AkkaVersion,
+      "com.typesafe.akka" %% "akka-persistence-cassandra" % CassandraPluginVersion,
 
       // this allows us to start cassandra from the sample
-      "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % cassandraPluginVersion,
+      "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % CassandraPluginVersion,
 
+      "com.typesafe.akka" %% "akka-discovery"               % AkkaVersion,
+
+      //"com.lightbend.akka" %% "akka-persistence-r2dbc" % AkkaPersistenceR2dbcVersion,
       //"com.lightbend.akka"      %% "akka-persistence-jdbc"          %     AkkaPersistenceJdbcVersion,
       //"com.swissborg"           %% "akka-persistence-postgres"      %     "0.5.0-M7",
       "com.typesafe.akka"         %% "akka-coordination" % AkkaVersion,
@@ -71,29 +108,55 @@ val `distr-master-worker` = project
 
       //"com.lightbend.akka.management" %% "akka-lease-kubernetes" % AkkaManagementVersion,
 
-      //transport = aeron-udp
-      "io.aeron" % "aeron-driver" % "1.40.0",
-      "io.aeron" % "aeron-client" % "1.40.0",
+      "io.aeron" % "aeron-driver" % "1.44.1",
+      "io.aeron" % "aeron-client" % "1.44.1",
 
-      "com.typesafe.akka" %% "akka-http"               % AkkaHttpVersion,
-      "com.typesafe.akka" %% "akka-http-spray-json"    % AkkaHttpVersion,
+      "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
+      "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
+
+      "com.lightbend.akka.management" %% "akka-management" % AkkaMngVersion,
+      "com.lightbend.akka.management" %% "akka-management-cluster-bootstrap" % AkkaMngVersion,
       "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaMngVersion,
 
       "com.typesafe.akka" %% "akka-slf4j"       %   AkkaVersion,
-      "ch.qos.logback"    %  "logback-classic"  %   "1.4.7",
+      "ch.qos.logback"    %  "logback-classic"  %   "1.2.11", //1.5.6
 
-      //"ru.odnoklassniki" % "one-nio" % "1.6.1",
+      //https://vladmihalcea.com/uuid-database-primary-key/
+      "io.hypersistence" % "hypersistence-tsid" % "2.1.2",
+      //"org.wvlet.airframe" %% "airframe-ulid" % "24.6.0",
+      //"ru.odnoklassniki" % "one-nio" % "1.7.3",
 
       //https://repo1.maven.org/maven2/com/lihaoyi/ammonite_2.13.11/
-      "com.lihaoyi" % "ammonite" % "3.0.0-M0-49-151446c5" % "test" cross CrossVersion.full,
+      "com.lihaoyi" % "ammonite" % AmmoniteVersion % "test" cross CrossVersion.full,
 
       "com.typesafe.akka" %% "akka-multi-node-testkit" % AkkaVersion),
 
-      //fork in run := true,
+    /*javaOptions ++= Seq(
+      "-XX:+PrintFlagsFinal",
+      "-XX:+PrintCommandLineFlags",
+      "-XshowSettings:system -version",
+      "-Xms212m",
+      "-Xmx256m",
+
+      "-XX:ReservedCodeCacheSize=251658240",
+      "-XX:MaxDirectMemorySize=128m",
+
+      "-XX:+UseZGC", // https://www.baeldung.com/jvm-zgc-garbage-collector
+      "--add-opens",
+      "java.base/sun.nio.ch=ALL-UNNAMED",
+    ),*/
+
+    // comment out for test:run
+    run / fork := true,
+    run / connectInput := true,
+
+    //run / fork := true,
+    //fork in run := true,
     Test / parallelExecution := false,
   ) configs MultiJvm
 
 //Global / cancelable := false
+
 
 // transitive dependency of akka 2.5x that is brought in
 dependencyOverrides ++= Seq(
@@ -122,7 +185,6 @@ dependencyOverrides ++= Seq(
 Compile / javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation", "-parameters")
 
 scalafmtOnCompile := true
-
 
 //test:run test:console
 Test / sourceGenerators += Def.task {

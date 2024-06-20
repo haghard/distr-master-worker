@@ -27,8 +27,9 @@ object Master {
 
       ctx.system.receptionist ! Receptionist.Subscribe(
         MasterWorkerKey,
-        ctx.messageAdapter[Receptionist.Listing] { case MasterWorkerKey.Listing(workers) =>
-          MembershipChanged(workers)
+        ctx.messageAdapter[Receptionist.Listing] {
+          case MasterWorkerKey.Listing(workers) => MembershipChanged(workers)
+          case other: Receptionist.Listing      => throw new Exception("Unexpected: " + other)
         }
       )
       active(master, Set.empty[ActorRef[WProtocol]], ctx)

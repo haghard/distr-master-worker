@@ -23,10 +23,10 @@ object Api extends PathDirectives with Directives {
 
   sealed trait Reply
   final case class Status(master: String, workers: List[String]) extends Reply
-  implicit val errorFormat0: RootJsonFormat[Status] = jsonFormat2(Status)
+  implicit val errorFormat0: RootJsonFormat[Status] = jsonFormat2(Status.apply)
 
   final case class ServerError(error: String)
-  implicit val errorFormat1: RootJsonFormat[ServerError] = jsonFormat1(ServerError)
+  implicit val errorFormat1: RootJsonFormat[ServerError] = jsonFormat1(ServerError.apply)
 
   def apply(
     master: ActorRef[Master.HttpReq],

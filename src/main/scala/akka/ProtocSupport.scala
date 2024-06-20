@@ -3,36 +3,34 @@ package akka
 import akka.actor.ExtendedActorSystem
 import akka.actor.typed.ActorRefResolver
 import akka.actor.typed.delivery.{ConsumerController, DurableProducerQueue, ProducerController}
-import akka.actor.typed.delivery.internal.{ChunkedMessage, ProducerControllerImpl}
+import akka.actor.typed.delivery.internal.ProducerControllerImpl
 import akka.actor.typed.scaladsl.adapter.ClassicActorSystemOps
+import akka.cluster.ddata.PayloadSizeAggregator
 import akka.cluster.typed.internal.protobuf.ReliableDelivery
 import akka.cluster.typed.internal.protobuf.ReliableDelivery.Confirmed
-import akka.protobufv3.internal.{ByteString, CodedOutputStream}
 import akka.remote.ContainerFormats
-import akka.remote.ContainerFormats.Payload
-import akka.remote.serialization.WrappedPayloadSupport
+import akka.serialization.SerializationExtension
+import com.dsim.domain.v1.WorkerTaskPB
 
 import java.nio.ByteBuffer
-import scala.jdk.CollectionConverters.{CollectionHasAsScala, IterableHasAsJava}
+import scala.jdk.CollectionConverters.{CollectionHasAsScala, IterableHasAsJava, IteratorHasAsScala}
 
-//copied from akka.cluster.typed.internal.delivery.ReliableDeliverySerializer
 trait ProtocSupport {
 
   def system: ExtendedActorSystem
 
-  protected lazy val payloadSupport = new WrappedPayloadSupport(system)
-  protected lazy val resolver       = ActorRefResolver(system.toTyped)
+  protected lazy val serId    = SerializationExtension(system).serializerFor(classOf[WorkerTaskPB]).identifier
+  protected lazy val resolver = ActorRefResolver(system.toTyped)
 
-  protected def sequencedMessageToBinary(
+  def sequencedMessageToBinary(
+    payloadSizeAggregator: PayloadSizeAggregator,
     m: ConsumerController.SequencedMessage[_]
   ): ReliableDelivery.SequencedMessage = {
-    def chunkedMessageToProto(chunk: ChunkedMessage): Payload.Builder = {
-      val payloadBuilder = ContainerFormats.Payload.newBuilder()
-      payloadBuilder.setEnclosedMessage(ByteString.copyFrom(chunk.serialized.toArray))
-      payloadBuilder.setMessageManifest(ByteString.copyFromUtf8(chunk.manifest))
-      payloadBuilder.setSerializerId(chunk.serializerId)
-      payloadBuilder
-    }
+    val payload        = m.message.asInstanceOf[WorkerTaskPB]
+    val payloadBuilder = ContainerFormats.Payload.newBuilder()
+    payloadBuilder.setEnclosedMessage(akka.protobufv3.internal.ByteString.copyFrom(payload.toByteArray))
+    payloadBuilder.setSerializerId(serId)
+    // println(s"1_MessageSent(${m.seqNr}, $serId)")
 
     val b = ReliableDelivery.SequencedMessage.newBuilder()
     b.setProducerId(m.producerId)
@@ -40,17 +38,33 @@ trait ProtocSupport {
     b.setFirst(m.first)
     b.setAck(m.ack)
     b.setProducerControllerRef(resolver.toSerializationFormat(m.producerController))
+    b.setMessage(payloadBuilder)
+    val pb = b.build()
 
-    m.message match {
-      case chunk: ChunkedMessage =>
-        b.setMessage(chunkedMessageToProto(chunk))
-        b.setFirstChunk(chunk.firstChunk)
-        b.setLastChunk(chunk.lastChunk)
-      case _ =>
-        b.setMessage(payloadSupport.payloadBuilder(m.message))
-    }
+    payloadSizeAggregator.updatePayloadSize("0", pb.getSerializedSize)
+    pb
+  }
 
-    b.build()
+  def durableQueueMessageSentToProto(
+    payloadSizeAggregator: PayloadSizeAggregator,
+    m: DurableProducerQueue.MessageSent[_]
+  ): ReliableDelivery.MessageSent = {
+
+    val payload        = m.message.asInstanceOf[WorkerTaskPB] // .withSeqNum(m.seqNr)
+    val payloadBuilder = ContainerFormats.Payload.newBuilder()
+    payloadBuilder.setEnclosedMessage(akka.protobufv3.internal.ByteString.copyFrom(payload.toByteArray))
+    payloadBuilder.setSerializerId(serId)
+
+    val b = ReliableDelivery.MessageSent.newBuilder()
+    b.setSeqNr(m.seqNr)
+    b.setQualifier(m.confirmationQualifier)
+    b.setAck(m.ack)
+    b.setTimestamp(m.timestampMillis)
+    b.setMessage(payloadBuilder)
+    // println(s"2_MessageSent(${m.seqNr},${m.timestampMillis})")
+    val pb = b.build()
+    payloadSizeAggregator.updatePayloadSize("0", pb.getSerializedSize)
+    pb
   }
 
   protected def ackToBinary(m: ProducerControllerImpl.Ack): ReliableDelivery.Ack = {
@@ -83,73 +97,39 @@ trait ProtocSupport {
     )
   }
 
-  protected def resendToBinary(m: ProducerControllerImpl.Resend) = {
+  protected def resendToBinary(m: ProducerControllerImpl.Resend): ReliableDelivery.Resend = {
     val b = ReliableDelivery.Resend.newBuilder()
     b.setFromSeqNr(m.fromSeqNr)
     b.build()
   }
 
-  protected def registerConsumerToBinary(m: ProducerController.RegisterConsumer[_]) = {
+  protected def registerConsumerToBinary(
+    m: ProducerController.RegisterConsumer[_]
+  ): ReliableDelivery.RegisterConsumer = {
     val b = ReliableDelivery.RegisterConsumer.newBuilder()
     b.setConsumerControllerRef(resolver.toSerializationFormat(m.consumerController))
     b.build()
   }
 
-  protected def sequencedMessageFromBinary[T](
-    byteBuffer: ByteBuffer
-  ): ConsumerController.SequencedMessage[T] = {
-    val seqMsg = ReliableDelivery.SequencedMessage.parseFrom(byteBuffer)
-    val wrappedMsg =
-      if (seqMsg.hasFirstChunk) {
-        val manifest =
-          if (seqMsg.getMessage.hasMessageManifest) seqMsg.getMessage.getMessageManifest.toStringUtf8 else ""
-        ChunkedMessage(
-          akka.util.ByteString(seqMsg.getMessage.getEnclosedMessage.toByteArray),
-          seqMsg.getFirstChunk,
-          seqMsg.getLastChunk,
-          seqMsg.getMessage.getSerializerId,
-          manifest
-        )
-      } else {
-        payloadSupport.deserializePayload(seqMsg.getMessage)
-      }
-    ConsumerController.SequencedMessage[T](
-      seqMsg.getProducerId,
-      seqMsg.getSeqNr,
-      wrappedMsg,
-      seqMsg.getFirst,
-      seqMsg.getAck
-    )(resolver.resolveActorRef(seqMsg.getProducerControllerRef))
-  }
-
-  protected def durableQueueMessageSentToProto(
-    m: DurableProducerQueue.MessageSent[_]
-  ): ReliableDelivery.MessageSent = {
-
-    def chunkedMessageToProto(chunk: ChunkedMessage): Payload.Builder = {
-      val payloadBuilder = ContainerFormats.Payload.newBuilder()
-      payloadBuilder.setEnclosedMessage(ByteString.copyFrom(chunk.serialized.toArray))
-      payloadBuilder.setMessageManifest(ByteString.copyFromUtf8(chunk.manifest))
-      payloadBuilder.setSerializerId(chunk.serializerId)
-      payloadBuilder
+  protected def sequencedMessageFromBinary(
+    directByteBuffer: ByteBuffer
+  ): ConsumerController.SequencedMessage[WorkerTaskPB] = {
+    val seqMsg = ReliableDelivery.SequencedMessage.parseFrom(directByteBuffer)
+    val wrappedMsg = {
+      val taskPbBts = seqMsg.getMessage.getEnclosedMessage.toByteArray
+      WorkerTaskPB.parseFrom(taskPbBts) // .withSeqNum(seqMsg.getSeqNr) // TODO
     }
 
-    val b = ReliableDelivery.MessageSent.newBuilder()
-    b.setSeqNr(m.seqNr)
-    b.setQualifier(m.confirmationQualifier)
-    b.setAck(m.ack)
-    b.setTimestamp(m.timestampMillis)
+    val pb =
+      ConsumerController.SequencedMessage[WorkerTaskPB](
+        seqMsg.getProducerId,
+        seqMsg.getSeqNr,
+        wrappedMsg,
+        seqMsg.getFirst,
+        seqMsg.getAck
+      )(resolver.resolveActorRef(seqMsg.getProducerControllerRef))
 
-    m.message match {
-      case chunk: ChunkedMessage =>
-        b.setMessage(chunkedMessageToProto(chunk))
-        b.setFirstChunk(chunk.firstChunk)
-        b.setLastChunk(chunk.lastChunk)
-      case _ =>
-        b.setMessage(payloadSupport.payloadBuilder(m.message))
-    }
-
-    b.build()
+    pb
   }
 
   protected def durableQueueConfirmedToProto(
@@ -164,15 +144,26 @@ trait ProtocSupport {
     b.build()
   }
 
-  protected def durableQueueStateToBinary(m: DurableProducerQueue.State[_]): ReliableDelivery.State = {
+  protected def durableQueueStateToBinary(
+    m: DurableProducerQueue.State[WorkerTaskPB],
+    payloadSizeAggregator: PayloadSizeAggregator
+  ): ReliableDelivery.State = {
     val b = ReliableDelivery.State.newBuilder()
     b.setCurrentSeqNr(m.currentSeqNr)
     b.setHighestConfirmedSeqNr(m.highestConfirmedSeqNr)
     b.addAllConfirmed(m.confirmedSeqNr.map { case (qualifier, (seqNr, timestamp)) =>
       durableQueueConfirmedToProto(qualifier, seqNr, timestamp)
     }.asJava)
-    b.addAllUnconfirmed(m.unconfirmed.map(durableQueueMessageSentToProto).asJava)
-    b.build()
+    b.addAllUnconfirmed(m.unconfirmed.map(durableQueueMessageSentToProto(payloadSizeAggregator, _)).asJava)
+    val pb = b.build()
+    system.log.warning(
+      "DurableProducerQueue.State: unconfirmed:{},confirmedSeqNr:{},size:{}",
+      m.unconfirmed.size,
+      m.confirmedSeqNr.keySet.size,
+      pb.getSerializedSize
+    )
+    payloadSizeAggregator.updatePayloadSize("0", pb.getSerializedSize)
+    pb
   }
 
   protected def durableQueueCleanupToBinary(m: DurableProducerQueue.Cleanup): ReliableDelivery.Cleanup = {
@@ -181,10 +172,9 @@ trait ProtocSupport {
     b.build()
   }
 
-  protected def durableQueueStateFromBinary[T](buf: ByteBuffer): DurableProducerQueue.State[T] = {
-
+  protected def durableQueueStateFromBinary(buf: ByteBuffer): DurableProducerQueue.State[WorkerTaskPB] = {
     val state = ReliableDelivery.State.parseFrom(buf)
-    DurableProducerQueue.State[T](
+    DurableProducerQueue.State[WorkerTaskPB](
       state.getCurrentSeqNr,
       state.getHighestConfirmedSeqNr,
       state.getConfirmedList.asScala
@@ -194,44 +184,39 @@ trait ProtocSupport {
     )
   }
 
-  protected def durableQueueMessageSentFromBinary[T](bytes: ByteBuffer): AnyRef = {
-    val sent = ReliableDelivery.MessageSent.parseFrom(bytes)
-    durableQueueMessageSentFromProto[T](sent)
+  protected def durableQueueMessageSentFromBinary(
+    directByteBuffer: ByteBuffer
+  ): DurableProducerQueue.MessageSent[WorkerTaskPB] = {
+    val msgSent: ReliableDelivery.MessageSent = ReliableDelivery.MessageSent.parseFrom(directByteBuffer)
+    durableQueueMessageSentFromProto(msgSent)
   }
 
-  private def durableQueueMessageSentFromProto[T](
+  private def durableQueueMessageSentFromProto(
     sent: ReliableDelivery.MessageSent
-  ): DurableProducerQueue.MessageSent[T] = {
-    val wrappedMsg =
-      if (sent.hasFirstChunk) {
-        val manifest =
-          if (sent.getMessage.hasMessageManifest) sent.getMessage.getMessageManifest.toStringUtf8 else ""
-        ChunkedMessage(
-          akka.util.ByteString(sent.getMessage.getEnclosedMessage.toByteArray),
-          sent.getFirstChunk,
-          sent.getLastChunk,
-          sent.getMessage.getSerializerId,
-          manifest
-        )
-      } else {
-        payloadSupport.deserializePayload(sent.getMessage)
-      }
+  ): DurableProducerQueue.MessageSent[WorkerTaskPB] = {
+    val taskPbBts = sent.getMessage.getEnclosedMessage.toByteArray
+    val taskPb    = WorkerTaskPB.parseFrom(taskPbBts)
     DurableProducerQueue
-      .MessageSent[T](sent.getSeqNr, wrappedMsg.asInstanceOf[T], sent.getAck, sent.getQualifier, sent.getTimestamp)
+      .MessageSent[WorkerTaskPB](sent.getSeqNr, taskPb, sent.getAck, sent.getQualifier, sent.getTimestamp)
   }
 
-  protected def durableQueueConfirmedFromBinary(bytes: ByteBuffer): AnyRef = {
-    val confirmed = ReliableDelivery.Confirmed.parseFrom(bytes)
+  def durableQueueConfirmedFromBinary(directByteBuffer: ByteBuffer): DurableProducerQueue.Confirmed = {
+    val confirmed = ReliableDelivery.Confirmed.parseFrom(directByteBuffer)
     DurableProducerQueue.Confirmed(confirmed.getSeqNr, confirmed.getQualifier, confirmed.getTimestamp)
   }
 
-  protected def resendFromBinary(bytes: ByteBuffer): AnyRef = {
-    val resend = ReliableDelivery.Resend.parseFrom(bytes)
+  def durableQueueCleanupFromBinary(directByteBuffer: ByteBuffer): DurableProducerQueue.Cleanup = {
+    val cleanup = ReliableDelivery.Cleanup.parseFrom(directByteBuffer)
+    DurableProducerQueue.Cleanup(cleanup.getQualifiersList.iterator.asScala.toSet)
+  }
+
+  def resendFromBinary(directByteBuffer: ByteBuffer): ProducerControllerImpl.Resend = {
+    val resend = ReliableDelivery.Resend.parseFrom(directByteBuffer)
     ProducerControllerImpl.Resend(resend.getFromSeqNr)
   }
 
-  protected def registerConsumerFromBinary(bytes: ByteBuffer): AnyRef = {
-    val reg = ReliableDelivery.RegisterConsumer.parseFrom(bytes)
+  def registerConsumerFromBinary(directByteBuffer: ByteBuffer): ProducerController.RegisterConsumer[_] = {
+    val reg = ReliableDelivery.RegisterConsumer.parseFrom(directByteBuffer)
     ProducerController.RegisterConsumer(
       resolver.resolveActorRef[ConsumerController.Command[Any]](reg.getConsumerControllerRef)
     )

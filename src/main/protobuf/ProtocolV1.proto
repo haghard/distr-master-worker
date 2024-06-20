@@ -4,24 +4,26 @@ package com.dsim.domain.v1;
 import "scalapb/scalapb.proto";
 import "google/protobuf/timestamp.proto";
 
+
 option (scalapb.options) = {
     single_file: true
     flat_package: true
-    preamble: "sealed trait CommandPB"
-    preamble: "sealed trait ReplyPB"
+    //preamble: "sealed trait CommandPB"
+    //preamble: "sealed trait ReplyPB"
 };
 
+
+/*
 message ScheduleTaskPB {
     option (scalapb.message).extends = "CommandPB";
     int64 seqNum = 1;
     bytes replyTo = 2;
 }
+*/
 
-message JobDescriptionPB {
-  string desc = 1;
-}
 
-message WorkerJobPB {
-  int64 seqNum = 1;
+message WorkerTaskPB {
+  int64 tsid = 1;
+  //int64 seqNum = 2;
   bytes desc = 2;
 }
