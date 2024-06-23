@@ -4,24 +4,32 @@ import sbt.Keys.connectInput
 
 
 val AkkaVersion = "2.6.21"
-val CassandraPluginVersion = "1.0.5"
+val CassandraPluginVersion =  "1.1.1" //"1.0.5"
 val AkkaMngVersion  = "1.4.1"
 val AkkaHttpVersion = "10.2.10"
+val DiagnosticsV = "2.1.1"
 
+
+//https://doc.akka.io/docs/akka-dependencies/24.05
 /*
-
-val AkkaVersion = "2.9.3"
+val AkkaVersion = "2.9.4"
 val AkkaHttpVersion = "10.6.3"
 val AkkaMngVersion = "1.5.2"
-val CassandraPluginVersion = "1.1.0"
+val CassandraPluginVersion = "1.1.1"// last version with CassandraLauncher  //"1.2.1"
+val DiagnosticsV = "2.1.1"
 */
 
 //val AkkaPersistenceR2dbcVersion = "1.2.4"
 //val AkkaProjectionVersion = sys.props.getOrElse("akka-projection.version", "1.5.4")
 //val AkkaDiagnosticsVersion = "2.1.1"
 
-//val AkkaPersistenceJdbcVersion = "5.0.4"
-//val AkkaPersistenceR2dbcVersion = "1.0.1"
+//"com.lightbend.akka" %% "akka-persistence-r2dbc" % "1.2.4"
+// "com.lightbend.akka" %% "akka-persistence-jdbc" % "5.4.1"
+//val AkkaPersistenceJdbcVersion = "5.4.1"
+val AkkaPersistenceR2dbcVersion = "1.2.4"
+val AkkaProjectionV = "1.5.4"
+
+//"com.typesafe.akka" %% "akka-stream-kafka" % "6.0.0"
 
 //https://repo1.maven.org/maven2/com/lihaoyi/ammonite-compiler_3.3.1/3.0.0-M2-3-b5eb4787/
 val AmmoniteVersion = "3.0.0-M2-3-b5eb4787"
@@ -65,9 +73,14 @@ lazy val scalacSettings = Seq(
     "-Xlog-reflective-calls",
     "-Xlint",
 
+    //"-Xfatal-warnings",
+
     //https://github.com/apache/pekko-grpc/blob/88e8567e2decbca19642e5454729aa78cce455eb/project/Common.scala#L64
     // Generated code for methods/fields marked 'deprecated'
     "-Wconf:msg=Marked as deprecated in proto file:silent",
+
+    //silent pb
+    s"-Wconf:src=${(Compile / target).value}/scala-2.13/src_managed/.*:silent",
 
     "-Xmigration", //Emit migration warnings under -Xsource:3 as fatal warnings, not errors; -Xmigration disables fatality (#10439 by @som-snytt, #10511)
     "-Wconf:cat=other-match-analysis:error" //Transform exhaustivity warnings into errors.
@@ -100,10 +113,13 @@ val `distr-master-worker` = project
       "com.typesafe.akka" %% "akka-discovery"               % AkkaVersion,
 
       //"com.lightbend.akka" %% "akka-persistence-r2dbc" % AkkaPersistenceR2dbcVersion,
+
+      "com.lightbend.akka" %% "akka-projection-core" % AkkaProjectionV,
+
       //"com.lightbend.akka"      %% "akka-persistence-jdbc"          %     AkkaPersistenceJdbcVersion,
       //"com.swissborg"           %% "akka-persistence-postgres"      %     "0.5.0-M7",
-      "com.typesafe.akka"         %% "akka-coordination" % AkkaVersion,
 
+      "com.typesafe.akka"         %% "akka-coordination" % AkkaVersion,
       "com.typesafe.akka"         %% "akka-cluster-sharding-typed" % AkkaVersion,
 
       //"com.lightbend.akka.management" %% "akka-lease-kubernetes" % AkkaManagementVersion,
@@ -111,8 +127,12 @@ val `distr-master-worker` = project
       "io.aeron" % "aeron-driver" % "1.44.1",
       "io.aeron" % "aeron-client" % "1.44.1",
 
+      "io.moia"  %% "streamee"  % "5.0.0",
+
       "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
       "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
+
+      "com.lightbend.akka" %% "akka-diagnostics" %  DiagnosticsV,
 
       "com.lightbend.akka.management" %% "akka-management" % AkkaMngVersion,
       "com.lightbend.akka.management" %% "akka-management-cluster-bootstrap" % AkkaMngVersion,
@@ -123,28 +143,13 @@ val `distr-master-worker` = project
 
       //https://vladmihalcea.com/uuid-database-primary-key/
       "io.hypersistence" % "hypersistence-tsid" % "2.1.2",
-      //"org.wvlet.airframe" %% "airframe-ulid" % "24.6.0",
+      
       //"ru.odnoklassniki" % "one-nio" % "1.7.3",
 
       //https://repo1.maven.org/maven2/com/lihaoyi/ammonite_2.13.11/
       "com.lihaoyi" % "ammonite" % AmmoniteVersion % "test" cross CrossVersion.full,
 
       "com.typesafe.akka" %% "akka-multi-node-testkit" % AkkaVersion),
-
-    /*javaOptions ++= Seq(
-      "-XX:+PrintFlagsFinal",
-      "-XX:+PrintCommandLineFlags",
-      "-XshowSettings:system -version",
-      "-Xms212m",
-      "-Xmx256m",
-
-      "-XX:ReservedCodeCacheSize=251658240",
-      "-XX:MaxDirectMemorySize=128m",
-
-      "-XX:+UseZGC", // https://www.baeldung.com/jvm-zgc-garbage-collector
-      "--add-opens",
-      "java.base/sun.nio.ch=ALL-UNNAMED",
-    ),*/
 
     // comment out for test:run
     run / fork := true,
@@ -188,7 +193,7 @@ scalafmtOnCompile := true
 
 //test:run test:console
 Test / sourceGenerators += Def.task {
-  val file = (sourceManaged in Test).value / "amm.scala"
+  val file = (Test / sourceManaged).value / "amm.scala"
   IO.write(file, """object amm extends App { ammonite.Main().run() }""")
   Seq(file)
 }.taskValue

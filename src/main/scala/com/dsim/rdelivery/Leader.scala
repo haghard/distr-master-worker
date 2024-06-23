@@ -1,8 +1,10 @@
 package com.dsim.rdelivery
 
+import akka.TsidUtils
 import akka.actor.typed.Behavior
 import akka.actor.typed.delivery.WorkPullingProducerController
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import akka.cluster.UniqueAddress
 import akka.persistence.typed.PersistenceId
 import com.dsim.domain.v1.WorkerTaskPB
 import io.hypersistence.tsid.TSID
@@ -41,7 +43,7 @@ object Leader {
     case object ShutDown extends Command
   }
 
-  def apply(): Behavior[Leader.Command] =
+  def apply(uniqueAddress: UniqueAddress): Behavior[Leader.Command] =
     Behaviors.setup { implicit ctx =>
       // implicit val exc = ctx.executionContext
       // val serialization = SerializationExtension(ctx.system.toClassic)
@@ -90,26 +92,30 @@ object Leader {
         Behaviors.withStash(bufferSize)(idle()(ctx, _))
       }*/
 
-      run(ctx)
+      val nodeCount = 20 // (uniqueAddress.longUid.abs % 20).toInt
 
+      // https://vladmihalcea.com/uuid-database-primary-key/
+      val tsidFactory = TsidUtils.getTsidFactory(nodeCount, (uniqueAddress.longUid % nodeCount).abs.toInt)
+      run(tsidFactory)(ctx)
     }
 
-  // def pulling(req: ReqNextWrapper): Behavior[Command] = {}
-
-  def run(
+  def run(fact: TSID.Factory)(implicit
     ctx: ActorContext[Leader.Command]
   ): Behavior[Command] =
     Behaviors.receiveMessagePartial {
       case req: Command.ReqNextWrapper =>
-        // pulling(req)
-        // ctx.log.info("ReqNext")
-        val bts = new Array[Byte](1024 * 5)
+        // Pull next element from somewhere
+        val bts = new Array[Byte](1024 * 2)
         ThreadLocalRandom.current().nextBytes(bts)
+        ThreadLocalRandom.current().nextInt(300, 600)
 
-        val tsid = TSID.fast().toLong
+        val tsid =
+          // TSID.fast().toLong
+          fact.generate().toLong
+
         val task = WorkerTaskPB(tsid, com.google.protobuf.UnsafeByteOperations.unsafeWrap(bts))
 
-        // ctx.log.info("Produce: {}", tsid)
+        ctx.log.info("Produce: {}", tsid)
         req.reqNext.sendNextTo.tell(task)
         Behaviors.same
 

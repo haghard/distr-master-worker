@@ -48,17 +48,17 @@ class ReliableDeliveryDirectSerializer2(val system: ExtendedActorSystem)
     with ByteBufferSerializer
     with ProtocSupport {
 
-  private val SequencedMessageManifest = "a"
-  private val AckManifest              = "b"
-  private val RequestManifest          = "c"
+  val SequencedMessageManifest = "a"
+  val AckManifest              = "b"
+  val RequestManifest          = "c"
 
-  private val ResendManifest           = "d"
-  private val RegisterConsumerManifest = "e"
+  val ResendManifest           = "d"
+  val RegisterConsumerManifest = "e"
 
-  private val DurableQueueMessageSentManifest = "f" //
-  private val DurableQueueConfirmedManifest   = "g" //
-  private val DurableQueueStateManifest       = "h"
-  private val DurableQueueCleanupManifest     = "i"
+  val DurableQueueMessageSentManifest = "f"
+  val DurableQueueConfirmedManifest   = "g"
+  val DurableQueueStateManifest       = "h"
+  val DurableQueueCleanupManifest     = "i"
 
   val internal = new akka.cluster.typed.internal.delivery.ReliableDeliverySerializer(system)
   // you need to know the maximum size in bytes of the serialized messages
