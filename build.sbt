@@ -4,7 +4,7 @@ import sbt.Keys.connectInput
 
 
 val AkkaVersion = "2.6.21"
-val CassandraPluginVersion =  "1.1.1" //"1.0.5"
+val CassandraPluginVersion = "1.0.5" //"1.1.1" //"1.0.5"
 val AkkaMngVersion  = "1.4.1"
 val AkkaHttpVersion = "10.2.10"
 val DiagnosticsV = "2.1.1"
@@ -32,7 +32,7 @@ val AkkaProjectionV = "1.5.4"
 //"com.typesafe.akka" %% "akka-stream-kafka" % "6.0.0"
 
 //https://repo1.maven.org/maven2/com/lihaoyi/ammonite-compiler_3.3.1/3.0.0-M2-3-b5eb4787/
-val AmmoniteVersion = "3.0.0-M2-3-b5eb4787"
+val AmmoniteVersion = "3.0.2"
 
 lazy val java17Settings = Seq(
   "-XX:+UseZGC", // https://www.baeldung.com/jvm-zgc-garbage-collector
@@ -89,7 +89,7 @@ lazy val scalacSettings = Seq(
 
 resolvers += "Akka library repository".at("https://repo.akka.io/maven")
 
-//++ 2.12.17 or ++ 2.13.14
+//++ 2.12.17 or ++ 2.13.16
 val `distr-master-worker` = project
   .in(file("."))
   .settings(SbtMultiJvm.multiJvmSettings: _*)
@@ -97,7 +97,7 @@ val `distr-master-worker` = project
   .settings(
     name := "dist-master-worker",
     version := "0.0.1",
-    scalaVersion := "2.13.14",
+    scalaVersion := "2.13.16",
     javaOptions ++= java17Settings,
 
     libraryDependencies ++= Seq(
@@ -139,10 +139,10 @@ val `distr-master-worker` = project
       "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaMngVersion,
 
       "com.typesafe.akka" %% "akka-slf4j"       %   AkkaVersion,
-      "ch.qos.logback"    %  "logback-classic"  %   "1.2.11", //1.5.6
+      "ch.qos.logback"    %  "logback-classic"  %   "1.5.18",
 
       //https://vladmihalcea.com/uuid-database-primary-key/
-      "io.hypersistence" % "hypersistence-tsid" % "2.1.2",
+      "io.hypersistence" % "hypersistence-tsid" % "2.1.4",
       
       //"ru.odnoklassniki" % "one-nio" % "1.7.3",
 

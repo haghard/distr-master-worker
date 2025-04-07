@@ -13,6 +13,12 @@ import scala.util.control.NoStackTrace
 
 //The consumer talks with ConsumerController
 
+//akka.actor.typed.delivery.ConsumerController
+//akka.actor.typed.delivery.WorkPullingProducerController
+
+//https://github.com/haghard/distr-master-worker/blob/master/src/main/scala/com/dsim/rdelivery/Leader.scala
+//https://github.com/haghard/distr-master-worker/blob/master/src/main/scala/com/dsim/rdelivery/Worker.scala
+
 //
 object Worker {
 

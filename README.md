@@ -3,13 +3,14 @@
 
 ```bash
 
-
-To start cassandra 
+docker-compose -f docker-compose5.yml up
 
 sbt a    
 sbt b
+sbt d
 
 ```
+
 
 
 ### Main links

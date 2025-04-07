@@ -2,19 +2,17 @@ package com
 package dsim
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior, PostStop, Terminated}
+import akka.actor.typed.Behavior
 import akka.cluster.sharding.ShardCoordinator.ShardAllocationStrategy
 import akka.cluster.sharding.typed.ShardedDaemonProcessSettings
 import akka.cluster.sharding.typed.scaladsl.ShardedDaemonProcess
 import akka.cluster.typed.{ClusterSingleton, SelfUp, SingletonActor, Unsubscribe}
 import akka.management.cluster.scaladsl.ClusterHttpManagementRoutes
-import akka.persistence.cassandra.testkit.CassandraLauncher
 import com.dsim.http.Bootstrap
 import com.typesafe.config.ConfigFactory
 
-import java.io.File
 import java.lang.management.ManagementFactory
-import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 
@@ -39,6 +37,9 @@ object Runner extends Ops {
           cluster.subscriptions ! Unsubscribe(ctx.self)
 
           ctx.spawn(ClusterListenerActor(cluster), "listener")
+
+          // this allows us to start cassandra from the sample
+          // akka.persistence.cassandra.testkit.CassandraLauncher
 
           ClusterSingleton(ctx.system).init(
             SingletonActor(
@@ -84,7 +85,7 @@ object Runner extends Ops {
       sysCfg
     )
 
-    // start 2/3 workers
+    // start 2 workers
     ShardedDaemonProcess(system).init(
       name = "worker",
       numberOfInstances = sysCfg.getInt("num-of-workers"),
@@ -118,7 +119,8 @@ object Runner extends Ops {
       sdp.tell(ChangeNumberOfProcesses(4, ???))
      */
 
-    val memorySize = ManagementFactory.getOperatingSystemMXBean
+    val memorySize = ManagementFactory
+      .getOperatingSystemMXBean()
       .asInstanceOf[com.sun.management.OperatingSystemMXBean]
       .getTotalMemorySize
     val runtimeInfo = new StringBuilder()
@@ -152,4 +154,24 @@ object Runner extends Ops {
       sysCfg.getDuration("akka.coordinated-shutdown.default-phase-timeout", TimeUnit.SECONDS).seconds
     )
   }
+
+  /** To make the sample easier to run we kickstart a Cassandra instance to act as the journal. Cassandra is a great
+    * choice of backend for Akka Persistence but in a real application a pre-existing Cassandra cluster should be used.
+    */
+  /*
+  import akka.persistence.cassandra.testkit.CassandraLauncher
+  def startCassandraDatabase(): Unit = {
+    val databaseDirectory = new File("target/cassandra-db")
+    CassandraLauncher.start(
+      databaseDirectory,
+      CassandraLauncher.DefaultTestConfigResource,
+      clean = false,
+      port = 9042
+    )
+
+    // shut the cassandra instance down when the JVM stops
+    sys.addShutdownHook {
+      CassandraLauncher.stop()
+    }
+  }*/
 }

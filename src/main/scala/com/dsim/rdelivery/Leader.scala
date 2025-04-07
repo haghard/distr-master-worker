@@ -93,7 +93,6 @@ object Leader {
       }*/
 
       val nodeCount = 20 // (uniqueAddress.longUid.abs % 20).toInt
-
       // https://vladmihalcea.com/uuid-database-primary-key/
       val tsidFactory = TsidUtils.getTsidFactory(nodeCount, (uniqueAddress.longUid % nodeCount).abs.toInt)
       run(tsidFactory)(ctx)
