@@ -20,6 +20,9 @@ https://github.com/akka/akka/pull/28155
 https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html#sharding
 https://github.com/akka/akka-samples/tree/05703965e15cab5efbb66718a6e23ef42de05ff0/akka-sample-distributed-workers-scala
 
+patriknw: AtLeastOnceDelivery in Akka Typed: https://gist.github.com/patriknw/514bae62134050f24ca7af95ee977e54
+
+https://github.com/akka/akka/pull/25099
 
 ### Other links
 
@@ -78,6 +81,9 @@ https://github.com/SwissBorg/akka-persistence-postgres
 
 
 
+https://doc.akka.io/libraries/akka-core/current/typed/reliable-delivery.html
+
+https://doc.akka.io/libraries/akka-core/2.6/typed/reliable-delivery.html#work-pulling
 
 
 
