@@ -35,19 +35,15 @@ object Runner extends Ops {
 
         Behaviors.receive[SelfUp] { case (ctx, _ @SelfUp(_)) =>
           cluster.subscriptions ! Unsubscribe(ctx.self)
-
           ctx.spawn(ClusterListenerActor(cluster), "listener")
-
-          // this allows us to start cassandra from the sample
-          // akka.persistence.cassandra.testkit.CassandraLauncher
 
           ClusterSingleton(ctx.system).init(
             SingletonActor(
               Behaviors
-                .supervise(rdelivery.Leader(cluster.selfMember.uniqueAddress))
+                .supervise(rdelivery.Master(cluster.selfMember.uniqueAddress))
                 .onFailure[Exception](akka.actor.typed.SupervisorStrategy.resume.withLoggingEnabled(true)),
               "leader"
-            ).withStopMessage(rdelivery.Leader.Command.ShutDown)
+            ).withStopMessage(rdelivery.Master.Command.ShutDown)
           )
 
           // {"consumer-controller":{"flow-control-window":50,"only-flow-control":false,"resend-interval-max":"30s","resend-interval-min":"2s"},"producer-controller":{"durable-queue":{"request-timeout":"3s","resend-first-interval":"1s","retry-attempts":10}},"work-pulling":{"producer-controller":{"buffer-size":1000,"durable-queue":{"request-timeout":"3s","resend-first-interval":"1s","retry-attempts":10},"internal-ask-timeout":"60s"}}})
@@ -60,20 +56,6 @@ object Runner extends Ops {
           Bootstrap(ClusterHttpManagementRoutes(akka.cluster.Cluster(sys)), hostName, 8080)
           Behaviors.same
         }
-
-        /*Behaviors.receiveSignal[SelfUp] {
-            case (_, Terminated(`worker`)) =>
-              ctx.log.error(s"Unrecoverable error. $worker has been terminated. Shutting down...")
-              CoordinatedShutdown(sys).run(CriticalError)
-              Behaviors.same
-            case (_, PostStop) =>
-              ctx.log.warn("Guardian has been stopped")
-              Behaviors.same
-            case (_, other) =>
-              ctx.log.warn(s"Guardian got unexpected $other signal. Ignore it")
-              Behaviors.ignore
-          }
-         } else Behaviors.same*/
       }
       .narrow
 
@@ -154,24 +136,4 @@ object Runner extends Ops {
       sysCfg.getDuration("akka.coordinated-shutdown.default-phase-timeout", TimeUnit.SECONDS).seconds
     )
   }
-
-  /** To make the sample easier to run we kickstart a Cassandra instance to act as the journal. Cassandra is a great
-    * choice of backend for Akka Persistence but in a real application a pre-existing Cassandra cluster should be used.
-    */
-  /*
-  import akka.persistence.cassandra.testkit.CassandraLauncher
-  def startCassandraDatabase(): Unit = {
-    val databaseDirectory = new File("target/cassandra-db")
-    CassandraLauncher.start(
-      databaseDirectory,
-      CassandraLauncher.DefaultTestConfigResource,
-      clean = false,
-      port = 9042
-    )
-
-    // shut the cassandra instance down when the JVM stops
-    sys.addShutdownHook {
-      CassandraLauncher.stop()
-    }
-  }*/
 }

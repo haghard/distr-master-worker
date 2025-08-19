@@ -14,9 +14,7 @@ import scala.util.{Failure, Success}
 
 object Bootstrap {
 
-  case object CriticalError                 extends Reason
   private case object HttpServerBindFailure extends Reason
-
   private val terminationDeadline = 5.seconds
 }
 

@@ -2,34 +2,13 @@ import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 import sbt.Keys.connectInput
 
-
 val AkkaVersion = "2.6.21"
-val CassandraPluginVersion = "1.0.5" //"1.1.1" //"1.0.5"
-val AkkaMngVersion  = "1.4.1"
+val AkkaMngVersion  = "1.4.0"
 val AkkaHttpVersion = "10.2.10"
 val DiagnosticsV = "2.1.1"
 
-
-//https://doc.akka.io/docs/akka-dependencies/24.05
-/*
-val AkkaVersion = "2.9.4"
-val AkkaHttpVersion = "10.6.3"
-val AkkaMngVersion = "1.5.2"
-val CassandraPluginVersion = "1.1.1"// last version with CassandraLauncher  //"1.2.1"
-val DiagnosticsV = "2.1.1"
-*/
-
-//val AkkaPersistenceR2dbcVersion = "1.2.4"
-//val AkkaProjectionVersion = sys.props.getOrElse("akka-projection.version", "1.5.4")
-//val AkkaDiagnosticsVersion = "2.1.1"
-
-//"com.lightbend.akka" %% "akka-persistence-r2dbc" % "1.2.4"
-// "com.lightbend.akka" %% "akka-persistence-jdbc" % "5.4.1"
-//val AkkaPersistenceJdbcVersion = "5.4.1"
-val AkkaPersistenceR2dbcVersion = "1.2.4"
+val AkkaPersistenceJdbcVersion = "5.0.4"
 val AkkaProjectionV = "1.5.4"
-
-//"com.typesafe.akka" %% "akka-stream-kafka" % "6.0.0"
 
 //https://repo1.maven.org/maven2/com/lihaoyi/ammonite-compiler_3.3.1/3.0.0-M2-3-b5eb4787/
 val AmmoniteVersion = "3.0.2"
@@ -43,24 +22,6 @@ lazy val java17Settings = Seq(
 )
 
 lazy val scalacSettings = Seq(
-  /*scalacOptions ++= Seq(
-    "-release:17",
-    //"-target:11",
-    //"-target:jvm-14",
-    //"-deprecation",             // Emit warning and location for usages of deprecated APIs.
-    "-unchecked",               // Enable additional warnings where generated code depends on assumptions.
-    "-encoding", "UTF-8",       // Specify character encoding used by source files.
-    //"-Ywarn-dead-code",         // Warn when dead code is identified.
-    "-Ywarn-extra-implicit",    // Warn when more than one implicit parameter section is defined.
-    "-Ywarn-numeric-widen",     // Warn when numerics are widened.
-    "-Ywarn-unused:implicits",  // Warn if an implicit parameter is unused.
-    "-Ywarn-unused:imports",    // Warn if an import selector is not referenced.
-    "-Ywarn-unused:locals",     // Warn if a local definition is unused.
-    "-Ywarn-unused:params",     // Warn if a value parameter is unused.
-    "-Ywarn-unused:patvars",    // Warn if a variable bound in a pattern is unused.
-    "-Ywarn-unused:privates",   // Warn if a private member is unused.
-    "-Ywarn-value-discard"      // Warn when non-Unit expression results are unused.
-  )*/
   scalacOptions ++= Seq(
     "-Xsource:3-cross",
     "-language:experimental.macros",
@@ -105,21 +66,12 @@ val `distr-master-worker` = project
 
       "com.typesafe.akka" %% "akka-persistence-typed"  % AkkaVersion, //to shade old akka-cluster-sharding
       "com.typesafe.akka" %% "akka-persistence-query"  % AkkaVersion,
-      "com.typesafe.akka" %% "akka-persistence-cassandra" % CassandraPluginVersion,
 
-      // this allows us to start cassandra from the sample
-      "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % CassandraPluginVersion,
+      "mysql" % "mysql-connector-java" % "8.0.33",
+      "com.lightbend.akka" %% "akka-persistence-jdbc"  % AkkaPersistenceJdbcVersion,
 
       "com.typesafe.akka" %% "akka-discovery"               % AkkaVersion,
 
-      //"com.lightbend.akka" %% "akka-persistence-r2dbc" % AkkaPersistenceR2dbcVersion,
-
-      "com.lightbend.akka" %% "akka-projection-core" % AkkaProjectionV,
-
-      //"com.lightbend.akka"      %% "akka-persistence-jdbc"          %     AkkaPersistenceJdbcVersion,
-      //"com.swissborg"           %% "akka-persistence-postgres"      %     "0.5.0-M7",
-
-      "com.typesafe.akka"         %% "akka-coordination" % AkkaVersion,
       "com.typesafe.akka"         %% "akka-cluster-sharding-typed" % AkkaVersion,
 
       //"com.lightbend.akka.management" %% "akka-lease-kubernetes" % AkkaManagementVersion,
@@ -144,7 +96,7 @@ val `distr-master-worker` = project
       //https://vladmihalcea.com/uuid-database-primary-key/
       "io.hypersistence" % "hypersistence-tsid" % "2.1.4",
       
-      //"ru.odnoklassniki" % "one-nio" % "1.7.3",
+
 
       //https://repo1.maven.org/maven2/com/lihaoyi/ammonite_2.13.11/
       "com.lihaoyi" % "ammonite" % AmmoniteVersion % "test" cross CrossVersion.full,
