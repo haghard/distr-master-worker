@@ -10,7 +10,7 @@ import akka.cluster.typed.internal.protobuf.ReliableDelivery
 import akka.cluster.typed.internal.protobuf.ReliableDelivery.Confirmed
 import akka.remote.ContainerFormats
 import akka.serialization.SerializationExtension
-import com.dsim.domain.v1.WorkerTaskPB
+import com.dsim.domain.v1.ReservationPB
 
 import java.nio.ByteBuffer
 import scala.jdk.CollectionConverters.{CollectionHasAsScala, IterableHasAsJava, IteratorHasAsScala}
@@ -19,14 +19,14 @@ trait ProtocSupport {
 
   def system: ExtendedActorSystem
 
-  protected lazy val serId    = SerializationExtension(system).serializerFor(classOf[WorkerTaskPB]).identifier
+  protected lazy val serId    = SerializationExtension(system).serializerFor(classOf[ReservationPB]).identifier
   protected lazy val resolver = ActorRefResolver(system.toTyped)
 
   def sequencedMessageToBinary(
     payloadSizeAggregator: PayloadSizeAggregator,
     m: ConsumerController.SequencedMessage[_]
   ): ReliableDelivery.SequencedMessage = {
-    val payload        = m.message.asInstanceOf[WorkerTaskPB]
+    val payload        = m.message.asInstanceOf[ReservationPB]
     val payloadBuilder = ContainerFormats.Payload.newBuilder()
     payloadBuilder.setEnclosedMessage(akka.protobufv3.internal.ByteString.copyFrom(payload.toByteArray))
     payloadBuilder.setSerializerId(serId)
@@ -50,7 +50,7 @@ trait ProtocSupport {
     m: DurableProducerQueue.MessageSent[_]
   ): ReliableDelivery.MessageSent = {
 
-    val payload        = m.message.asInstanceOf[WorkerTaskPB] // .withSeqNum(m.seqNr)
+    val payload        = m.message.asInstanceOf[ReservationPB] // .withSeqNum(m.seqNr)
     val payloadBuilder = ContainerFormats.Payload.newBuilder()
     payloadBuilder.setEnclosedMessage(akka.protobufv3.internal.ByteString.copyFrom(payload.toByteArray))
     payloadBuilder.setSerializerId(serId)
@@ -113,15 +113,15 @@ trait ProtocSupport {
 
   protected def sequencedMessageFromBinary(
     directByteBuffer: ByteBuffer
-  ): ConsumerController.SequencedMessage[WorkerTaskPB] = {
+  ): ConsumerController.SequencedMessage[ReservationPB] = {
     val seqMsg = ReliableDelivery.SequencedMessage.parseFrom(directByteBuffer)
     val wrappedMsg = {
       val taskPbBts = seqMsg.getMessage.getEnclosedMessage.toByteArray
-      WorkerTaskPB.parseFrom(taskPbBts) // .withSeqNum(seqMsg.getSeqNr) // TODO
+      ReservationPB.parseFrom(taskPbBts) // .withSeqNum(seqMsg.getSeqNr) // TODO
     }
 
     val pb =
-      ConsumerController.SequencedMessage[WorkerTaskPB](
+      ConsumerController.SequencedMessage[ReservationPB](
         seqMsg.getProducerId,
         seqMsg.getSeqNr,
         wrappedMsg,
@@ -145,7 +145,7 @@ trait ProtocSupport {
   }
 
   protected def durableQueueStateToBinary(
-    m: DurableProducerQueue.State[WorkerTaskPB],
+    m: DurableProducerQueue.State[ReservationPB],
     payloadSizeAggregator: PayloadSizeAggregator
   ): ReliableDelivery.State = {
     val b = ReliableDelivery.State.newBuilder()
@@ -172,9 +172,9 @@ trait ProtocSupport {
     b.build()
   }
 
-  protected def durableQueueStateFromBinary(buf: ByteBuffer): DurableProducerQueue.State[WorkerTaskPB] = {
+  protected def durableQueueStateFromBinary(buf: ByteBuffer): DurableProducerQueue.State[ReservationPB] = {
     val state = ReliableDelivery.State.parseFrom(buf)
-    DurableProducerQueue.State[WorkerTaskPB](
+    DurableProducerQueue.State[ReservationPB](
       state.getCurrentSeqNr,
       state.getHighestConfirmedSeqNr,
       state.getConfirmedList.asScala
@@ -186,18 +186,18 @@ trait ProtocSupport {
 
   protected def durableQueueMessageSentFromBinary(
     directByteBuffer: ByteBuffer
-  ): DurableProducerQueue.MessageSent[WorkerTaskPB] = {
+  ): DurableProducerQueue.MessageSent[ReservationPB] = {
     val msgSent: ReliableDelivery.MessageSent = ReliableDelivery.MessageSent.parseFrom(directByteBuffer)
     durableQueueMessageSentFromProto(msgSent)
   }
 
   private def durableQueueMessageSentFromProto(
     sent: ReliableDelivery.MessageSent
-  ): DurableProducerQueue.MessageSent[WorkerTaskPB] = {
+  ): DurableProducerQueue.MessageSent[ReservationPB] = {
     val taskPbBts = sent.getMessage.getEnclosedMessage.toByteArray
-    val taskPb    = WorkerTaskPB.parseFrom(taskPbBts)
+    val taskPb    = ReservationPB.parseFrom(taskPbBts)
     DurableProducerQueue
-      .MessageSent[WorkerTaskPB](sent.getSeqNr, taskPb, sent.getAck, sent.getQualifier, sent.getTimestamp)
+      .MessageSent[ReservationPB](sent.getSeqNr, taskPb, sent.getAck, sent.getQualifier, sent.getTimestamp)
   }
 
   def durableQueueConfirmedFromBinary(directByteBuffer: ByteBuffer): DurableProducerQueue.Confirmed = {

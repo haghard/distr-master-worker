@@ -1,13 +1,13 @@
 package akka
 
 import akka.actor.ExtendedActorSystem
-import akka.actor.typed.delivery.internal.{DeliverySerializable, ProducerControllerImpl}
+import akka.actor.typed.delivery.internal.ProducerControllerImpl
 import akka.actor.typed.delivery.{ConsumerController, DurableProducerQueue, ProducerController}
 import akka.cluster.ddata.protobuf.SerializationSupport
 import akka.protobufv3.internal.CodedOutputStream
-import akka.serialization.{ByteBufferSerializer, SerializationExtension, SerializerWithStringManifest}
-import com.dsim.domain.v1.WorkerTaskPB
-import com.dsim.rdelivery.serialization.{ByteBufferInputStream, ByteBufferOutputStream}
+import akka.serialization.{ByteBufferSerializer, SerializerWithStringManifest}
+import com.dsim.domain.v1.ReservationPB
+import com.dsim.rdelivery.serialization.ByteBufferOutputStream
 
 import java.nio.ByteBuffer
 import scala.util.Using
@@ -138,7 +138,7 @@ class ReliableDeliveryDirectSerializer2(val system: ExtendedActorSystem)
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(registerConsumerToBinary(m).writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(registerConsumerToBinary(m).writeTo(_))
 
-      case m: DurableProducerQueue.State[WorkerTaskPB] =>
+      case m: DurableProducerQueue.State[ReservationPB] =>
         // Using.resource(new ByteBufferOutputStream(directByteBuffer))(durableQueueStateToBinary(m).writeTo(_))
         Using.resource(CodedOutputStream.newInstance(directByteBuffer))(
           durableQueueStateToBinary(m, payloadSizeAggregator).writeTo(_)
@@ -153,10 +153,10 @@ class ReliableDeliveryDirectSerializer2(val system: ExtendedActorSystem)
   override def fromBinary(directByteBuffer: ByteBuffer, manifest: String): AnyRef =
     manifest match {
       case SequencedMessageManifest =>
-        val m: ConsumerController.SequencedMessage[WorkerTaskPB] = sequencedMessageFromBinary(directByteBuffer)
+        val m: ConsumerController.SequencedMessage[ReservationPB] = sequencedMessageFromBinary(directByteBuffer)
         m
       case DurableQueueStateManifest =>
-        val s: DurableProducerQueue.State[WorkerTaskPB] = durableQueueStateFromBinary(directByteBuffer)
+        val s: DurableProducerQueue.State[ReservationPB] = durableQueueStateFromBinary(directByteBuffer)
         system.log.warning(
           s"fromBinary: DurableProducerQueue.State [curSeqNr=${s.currentSeqNr},highestConfirmedSeqNr=${s.highestConfirmedSeqNr}] Unconfirmed:[${s.unconfirmed.map(_.seqNr).mkString(",")}]"
         )

@@ -8,10 +8,10 @@ val AkkaHttpVersion = "10.2.10"
 val DiagnosticsV = "2.1.1"
 
 val AkkaPersistenceJdbcVersion = "5.0.4"
-val AkkaProjectionV = "1.5.4"
 
 //https://repo1.maven.org/maven2/com/lihaoyi/ammonite-compiler_3.3.1/3.0.0-M2-3-b5eb4787/
 val AmmoniteVersion = "3.0.2"
+val projectionV = "1.2.5"
 
 lazy val java17Settings = Seq(
   "-XX:+UseZGC", // https://www.baeldung.com/jvm-zgc-garbage-collector
@@ -67,19 +67,14 @@ val `distr-master-worker` = project
       "com.typesafe.akka" %% "akka-persistence-typed"  % AkkaVersion, //to shade old akka-cluster-sharding
       "com.typesafe.akka" %% "akka-persistence-query"  % AkkaVersion,
 
+      "com.typesafe.akka" %% "akka-discovery"               % AkkaVersion,
+      "com.typesafe.akka"         %% "akka-cluster-sharding-typed" % AkkaVersion,
+
       "mysql" % "mysql-connector-java" % "8.0.33",
       "com.lightbend.akka" %% "akka-persistence-jdbc"  % AkkaPersistenceJdbcVersion,
 
-      "com.typesafe.akka" %% "akka-discovery"               % AkkaVersion,
-
-      "com.typesafe.akka"         %% "akka-cluster-sharding-typed" % AkkaVersion,
-
-      //"com.lightbend.akka.management" %% "akka-lease-kubernetes" % AkkaManagementVersion,
-
-      "io.aeron" % "aeron-driver" % "1.44.1",
-      "io.aeron" % "aeron-client" % "1.44.1",
-
-      "io.moia"  %% "streamee"  % "5.0.0",
+      "io.aeron" % "aeron-driver" % "1.45.1",
+      "io.aeron" % "aeron-client" % "1.45.1",
 
       "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
       "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
@@ -93,9 +88,8 @@ val `distr-master-worker` = project
       "com.typesafe.akka" %% "akka-slf4j"       %   AkkaVersion,
       "ch.qos.logback"    %  "logback-classic"  %   "1.5.18",
 
-      //https://vladmihalcea.com/uuid-database-primary-key/
-      "io.hypersistence" % "hypersistence-tsid" % "2.1.4",
-      
+      "com.typesafe.slick" %% "slick-hikaricp" % "3.3.3",
+      "com.typesafe.slick" %% "slick" % "3.3.3",
 
 
       //https://repo1.maven.org/maven2/com/lihaoyi/ammonite_2.13.11/

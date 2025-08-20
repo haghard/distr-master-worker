@@ -1,0 +1,15 @@
+syntax = "proto3";
+package com.dsim.domain.v1;
+
+import "scalapb/scalapb.proto";
+import "google/protobuf/timestamp.proto";
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+};
+
+message ReservationPB {
+  string id = 1;
+  bytes payload = 2;
+}
