@@ -11,13 +11,13 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.util.{Failure, Success, Try}
 
-/** Reliable delivery: Work pulling mode (fan-out). Allows us to do things that are very similar to what kafka's consumer group does.
-  * What types of things does it do:
+/** Reliable delivery: Work pulling mode (fan-out). Allows us to do things that are very similar to what kafka's
+  * consumer group does. What types of things does it do:
   *
   * a) It sequences your messages to guarantee idempotency. This means we can retry, and then we can do deduplication on
   * the other side.
   *
-  * b) It has flow control build in.
+  * b) It has flow control built-in.
   */
 object Master {
 
@@ -25,8 +25,8 @@ object Master {
 
   object Command {
     final case class ReqNextWrapper(reqNext: WorkPullingProducerController.RequestNext[ReservationPB]) extends Command
-    case object Tick                                                                                   extends Command
-    case object ShutDown                                                                               extends Command
+    final case object Tick                                                                             extends Command
+    final case object ShutDown                                                                         extends Command
 
     sealed trait JobCommand extends Command
     object JobCommand {
@@ -39,24 +39,24 @@ object Master {
   def apply(): Behavior[Master.Command] =
     Behaviors.setup { implicit ctx =>
       Behaviors.withTimers { implicit timer =>
-        // https://github.com/akka/akka-persistence-jdbc/blob/v5.0.4/core/src/main/resources/schema/mysql/mysql-create-schema.sql
+        val producerController =
+          ctx
+            .spawn(
+              WorkPullingProducerController[ReservationPB](
+                producerId = "tasks",
+                workerServiceKey = serviceKey,
+                durableQueueBehavior = None
+              ),
+              "producer-controller"
+            )
 
-        ctx
-          .spawn(
-            WorkPullingProducerController[ReservationPB](
-              producerId = "tasks",
-              workerServiceKey = serviceKey,
-              durableQueueBehavior = None
-            ),
-            "producer-controller"
-          )
-          .tell(
-            WorkPullingProducerController.Start(
-              ctx.messageAdapter[WorkPullingProducerController.RequestNext[ReservationPB]](
-                Command.ReqNextWrapper(_)
-              )
+        producerController.tell(
+          WorkPullingProducerController.Start(
+            ctx.messageAdapter[WorkPullingProducerController.RequestNext[ReservationPB]](
+              Command.ReqNextWrapper(_)
             )
           )
+        )
 
         val poolPeriod = Duration.fromNanos(ctx.system.settings.config.getDuration("pool-period").toNanos) // 5.seconds
         run(None, poolPeriod)

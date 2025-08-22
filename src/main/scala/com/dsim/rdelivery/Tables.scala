@@ -13,10 +13,19 @@ final case class ReservationRow(
   reservationId: UUID,
   status: String, // NEW->PROCESSING->DONE
   insertTs: Long,
+  deadlineDate: Option[Long],
   processingTs: Option[Long],
   failureTs: Option[Long],
   confirmationTs: Option[Long]
 )
+
+abstract class Status(val name: String)
+object Status {
+  object Done       extends Status("DONE")
+  object New        extends Status("NEW")
+  object Processing extends Status("PROCESSING")
+  object Error      extends Status("ERROR")
+}
 
 class SlickTablesGeneric(val profile: slick.jdbc.MySQLProfile) {
 
@@ -41,7 +50,9 @@ class SlickTablesGeneric(val profile: slick.jdbc.MySQLProfile) {
 
     def reservationId: Rep[UUID] = column[UUID]("RESERVATION_ID")
 
-    def status: Rep[String] = column[String]("STATUS", O.Length(100))
+    def status: Rep[String] = column[String]("STATUS", O.Length(20))
+
+    def deadlineDate: Rep[Long] = column[Long]("DEADLINE")
 
     def insertTs: Rep[Long] = column[Long]("INSERT_TS")
 
@@ -56,7 +67,7 @@ class SlickTablesGeneric(val profile: slick.jdbc.MySQLProfile) {
     def index: slick.lifted.Index = index("RESERVATIONS_STATUS_INSERT_TS__IND", (status, insertTs))
 
     def * : slick.lifted.ProvenShape[ReservationRow] =
-      (reservationId, status, insertTs, pickedUpForProcessingTs.?, failedTs.?, confirmedTs.?) <>
+      (reservationId, status, insertTs, deadlineDate.?, pickedUpForProcessingTs.?, failedTs.?, confirmedTs.?) <>
         ((ReservationRow.apply _).tupled, ReservationRow.unapply)
   }
 
@@ -68,7 +79,7 @@ class SlickTablesGeneric(val profile: slick.jdbc.MySQLProfile) {
         self
           .filter(_.reservationId === id)
           .map(rep => (rep.status, rep.confirmedTs))
-          .update(("DONE", System.currentTimeMillis()))
+          .update((Status.Done.name, System.currentTimeMillis()))
       )
 
     def markFailed(id: UUID): Future[Int] =
@@ -76,13 +87,13 @@ class SlickTablesGeneric(val profile: slick.jdbc.MySQLProfile) {
         self
           .filter(_.reservationId === id)
           .map(rep => (rep.status, rep.failedTs))
-          .update(("NEW", System.currentTimeMillis()))
+          .update((Status.New.name, System.currentTimeMillis()))
       )
 
-    def getNext(isNew: Boolean): Future[Option[UUID]] = {
+    def pickNext(isNew: Boolean): Future[Option[UUID]] = {
 
       val selectProcessing = {
-        val timeLimitInProcessing = 1_000 * 120 // 2 min
+        val timeLimitInProcessing = 1_000 * 60 * 3 // 3 min
         val now                   = System.currentTimeMillis()
         sql"""SELECT RESERVATION_ID FROM RESERVATIONS where STATUS = "PROCESSING" and (PROCESSING_TS + #$timeLimitInProcessing) < #$now LIMIT 1 FOR UPDATE SKIP LOCKED"""
           .as[UUID]
@@ -92,16 +103,16 @@ class SlickTablesGeneric(val profile: slick.jdbc.MySQLProfile) {
         sql"""SELECT RESERVATION_ID FROM RESERVATIONS where STATUS in ("NEW", "FAILED") ORDER BY INSERT_TS LIMIT 1 FOR UPDATE SKIP LOCKED"""
           .as[UUID]
 
-      val dbio: DBIO[Option[UUID]] = (if (isNew) selectNewAndFailed else selectProcessing)
-        .flatMap { id =>
-          if (id.nonEmpty)
+      val dbio: DBIO[Option[UUID]] = (if (isNew) selectNewAndFailed else selectProcessing).headOption
+        .flatMap {
+          case Some(taskId) =>
             self
-              .filter(_.reservationId === id.head)
+              .filter(_.reservationId === taskId)
               .map(rep => (rep.status, rep.pickedUpForProcessingTs))
-              .update(("PROCESSING", System.currentTimeMillis()))
-              .map(_ => id.headOption)
-          else
-            DBIO.successful(id.headOption)
+              .update((Status.Processing.name, System.currentTimeMillis()))
+              .map(_ => Some(taskId))
+          case None =>
+            DBIO.successful(None)
         }
         .asTry
         .map(_.fold({ ex => println("Error: " + ex.getMessage); None }, identity))
@@ -119,13 +130,13 @@ class SlickTablesGeneric(val profile: slick.jdbc.MySQLProfile) {
     db.run(ddl.createIfNotExists) // DBIO.successful(())
       .flatMap { _ =>
         val rows = (0 to 150).map { _ =>
-          ReservationRow(UUID.randomUUID(), "NEW", System.currentTimeMillis(), None, None, None)
+          ReservationRow(UUID.randomUUID(), Status.New.name, System.currentTimeMillis(), None, None, None, None)
         }
         db.run(DBIO.sequence(rows.map(reservations.insertOrUpdate)).map(_.size))
       }
 
   def nextReservation() =
-    reservations.getNext(ThreadLocalRandom.current().nextDouble() > .2)
+    reservations.pickNext(ThreadLocalRandom.current().nextDouble() > .2)
 
   def markDone(id: UUID) =
     reservations.markDone(id)

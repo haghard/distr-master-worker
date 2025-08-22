@@ -31,13 +31,13 @@ object Worker {
       Behaviors.withTimers { implicit timers =>
         val settings = akka.actor.typed.delivery.ConsumerController.Settings(ctx.system)
         ctx.log.warn("★ ★ ★  Start worker{} on {} ★ ★ ★", workerId, Cluster(ctx.system).selfMember.address)
-        ctx
-          .spawn(ConsumerController(serviceKey, settings), "consumer-controller")
-          .tell(
-            ConsumerController.Start(
-              ctx.messageAdapter[ConsumerController.Delivery[ReservationPB]](Command.DeliveryEnvelope(_))
-            )
+        val consumerController = ctx.spawn(ConsumerController(serviceKey, settings), "consumer-controller")
+
+        consumerController.tell(
+          ConsumerController.Start(
+            ctx.messageAdapter[ConsumerController.Delivery[ReservationPB]](Command.DeliveryEnvelope(_))
           )
+        )
 
         run()
       }
@@ -56,7 +56,7 @@ object Worker {
         task.confirmTo.tell(ConsumerController.Confirmed)
         Behaviors.stopped
       case Command.DeliveryEnvelope(_) =>
-        // do not start processing here
+        // do not accept new tasks here
         Behaviors.same
     }
 
@@ -87,20 +87,21 @@ object Worker {
 
       case Command.DeliveryEnvelope(task) =>
         ctx.log.warn(s"Start(${task.message.id})")
-        //task.seqNr can be used for deduplication
+        // task.seqNr can be used for deduplication
         ctx.pipeToSelf(bookRooms(UUID.fromString(task.message.id))(ctx.executionContext))(mapResult)
         awaitResult(task)
     }
 
-  def bookRooms(id: UUID)(implicit ec: ExecutionContext): Future[String] = {
+  def bookRooms(id: UUID)(implicit ec: ExecutionContext): Future[String] =
     Future {
-      Thread.sleep(500)
-      if (java.util.concurrent.ThreadLocalRandom.current().nextDouble() > .95) throw new Exception("Boom!") else "ok"
+      // grpcClint.book()
+      Thread.sleep(1_500)
+      if (java.util.concurrent.ThreadLocalRandom.current().nextDouble() > .95) throw new Exception("Boom!") else "done"
     }.flatMap(response => Tables.markDone(id).map(_ => response))
-      .recoverWith { case NonFatal(_) =>
+      .recoverWith { case NonFatal(ex) =>
+        ex.getMessage
         Tables.markFailed(id).map(_ => "error")
       }
-  }
 
   def mapResult[T <: Command]: Try[String] => Command = {
     case Success(correlationId) => Command.BookingResult.OK(correlationId)

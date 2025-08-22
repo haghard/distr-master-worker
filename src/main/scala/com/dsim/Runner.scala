@@ -53,7 +53,7 @@ object Runner extends Ops {
       .narrow
 
   def run(): Unit = {
-    val sysCfg = ConfigFactory.load()
+    val sysCfg          = ConfigFactory.load()
     implicit val system = akka.actor.typed.ActorSystem[Nothing](
       guardian(sysCfg.getString("akka.remote.artery.canonical.hostname")),
       SystemName,
@@ -106,11 +106,11 @@ object Runner extends Ops {
     // TODO: for local debug only !!!!!!!!!!!!!!!!!!!
     val _ = scala.io.StdIn.readLine()
     system.log.warn("Shutting down ...")
-    Tables.shutdown
     system.terminate()
     val _ = Await.result(
       system.whenTerminated,
       sysCfg.getDuration("akka.coordinated-shutdown.default-phase-timeout", TimeUnit.SECONDS).seconds
     )
+    Await.result(Tables.shutdown, 2.seconds)
   }
 }
