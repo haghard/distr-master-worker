@@ -9,9 +9,7 @@ val DiagnosticsV = "2.1.1"
 
 val AkkaPersistenceJdbcVersion = "5.0.4"
 
-//https://repo1.maven.org/maven2/com/lihaoyi/ammonite-compiler_3.3.1/3.0.0-M2-3-b5eb4787/
-val AmmoniteVersion = "3.0.2"
-val projectionV = "1.2.5"
+val AmmoniteVersion = "3.0.8"
 
 lazy val java17Settings = Seq(
   "-XX:+UseZGC", // https://www.baeldung.com/jvm-zgc-garbage-collector
@@ -22,6 +20,24 @@ lazy val java17Settings = Seq(
 )
 
 lazy val scalacSettings = Seq(
+  /*scalacOptions ++= Seq(
+    "-release:17",
+    //"-target:11",
+    //"-target:jvm-14",
+    //"-deprecation",             // Emit warning and location for usages of deprecated APIs.
+    "-unchecked",               // Enable additional warnings where generated code depends on assumptions.
+    "-encoding", "UTF-8",       // Specify character encoding used by source files.
+    //"-Ywarn-dead-code",         // Warn when dead code is identified.
+    "-Ywarn-extra-implicit",    // Warn when more than one implicit parameter section is defined.
+    "-Ywarn-numeric-widen",     // Warn when numerics are widened.
+    "-Ywarn-unused:implicits",  // Warn if an implicit parameter is unused.
+    "-Ywarn-unused:imports",    // Warn if an import selector is not referenced.
+    "-Ywarn-unused:locals",     // Warn if a local definition is unused.
+    "-Ywarn-unused:params",     // Warn if a value parameter is unused.
+    "-Ywarn-unused:patvars",    // Warn if a variable bound in a pattern is unused.
+    "-Ywarn-unused:privates",   // Warn if a private member is unused.
+    "-Ywarn-value-discard"      // Warn when non-Unit expression results are unused.
+  )*/
   scalacOptions ++= Seq(
     "-Xsource:3-cross",
     "-language:experimental.macros",
@@ -58,7 +74,7 @@ val `distr-master-worker` = project
   .settings(
     name := "dist-master-worker",
     version := "0.0.1",
-    scalaVersion := "2.13.16",
+    scalaVersion := "2.13.18",
     javaOptions ++= java17Settings,
 
     libraryDependencies ++= Seq(
@@ -79,14 +95,14 @@ val `distr-master-worker` = project
       "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
       "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
 
-      "com.lightbend.akka" %% "akka-diagnostics" %  DiagnosticsV,
+      //"com.lightbend.akka" %% "akka-diagnostics" %  DiagnosticsV,
 
       "com.lightbend.akka.management" %% "akka-management" % AkkaMngVersion,
       "com.lightbend.akka.management" %% "akka-management-cluster-bootstrap" % AkkaMngVersion,
       "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaMngVersion,
 
       "com.typesafe.akka" %% "akka-slf4j"       %   AkkaVersion,
-      "ch.qos.logback"    %  "logback-classic"  %   "1.5.18",
+      "ch.qos.logback"    %  "logback-classic"  %   "1.5.32",
 
       "com.typesafe.slick" %% "slick-hikaricp" % "3.3.3",
       "com.typesafe.slick" %% "slick" % "3.3.3",
