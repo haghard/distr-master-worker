@@ -80,7 +80,7 @@ val `distr-master-worker` = project
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-typed"      % AkkaVersion,
 
-      "com.typesafe.akka" %% "akka-persistence-typed"  % AkkaVersion, //to shade old akka-cluster-sharding
+      "com.typesafe.akka" %% "akka-persistence-typed"  % AkkaVersion,
       "com.typesafe.akka" %% "akka-persistence-query"  % AkkaVersion,
 
       "com.typesafe.akka" %% "akka-discovery"               % AkkaVersion,

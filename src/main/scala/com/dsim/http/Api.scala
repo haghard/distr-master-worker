@@ -1,3 +1,5 @@
+/*
+
 package com.dsim
 package http
 
@@ -5,7 +7,7 @@ import akka.actor.typed.ActorRef
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.server.directives.PathDirectives
-import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.scaladsl.AskPattern.*
 import akka.event.LoggingAdapter
 import akka.http.scaladsl.model.ContentTypes.`application/json`
 import akka.http.scaladsl.model.HttpEntity.Strict
@@ -13,11 +15,11 @@ import akka.util.ByteString
 import spray.json.DefaultJsonProtocol.jsonFormat1
 
 import scala.concurrent.{Future, TimeoutException}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
-import spray.json._
-import spray.json.DefaultJsonProtocol._
+import spray.json.*
+import spray.json.DefaultJsonProtocol.*
 
 object Api extends PathDirectives with Directives {
 
@@ -68,3 +70,4 @@ object Api extends PathDirectives with Directives {
     }
 
 }
+ */
