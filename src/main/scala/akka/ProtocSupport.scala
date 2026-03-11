@@ -114,7 +114,7 @@ trait ProtocSupport {
   protected def sequencedMessageFromBinary(
     directByteBuffer: ByteBuffer
   ): ConsumerController.SequencedMessage[WorkerTaskPB] = {
-    val seqMsg = ReliableDelivery.SequencedMessage.parseFrom(directByteBuffer)
+    val seqMsg     = ReliableDelivery.SequencedMessage.parseFrom(directByteBuffer)
     val wrappedMsg = {
       val taskPbBts = seqMsg.getMessage.getEnclosedMessage.toByteArray
       WorkerTaskPB.parseFrom(taskPbBts) // .withSeqNum(seqMsg.getSeqNr) // TODO

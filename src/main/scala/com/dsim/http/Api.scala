@@ -49,7 +49,7 @@ object Api extends PathDirectives with Directives {
     responseFuture: Future[T]
   )(f: Function[T, Route])(implicit c: ClassTag[T], log: LoggingAdapter): Route =
     onComplete(responseFuture) {
-      case Success(t: T) => f(t)
+      case Success(t: T)  => f(t)
       case Success(other) =>
         throw new IllegalArgumentException(
           s"Expected response of type ${c.runtimeClass.getName} instead of ${other.getClass.getName}."
